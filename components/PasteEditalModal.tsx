@@ -23,6 +23,7 @@ interface PasteEditalModalProps {
   onClose: () => void;
   currentTarget: ExamTarget;
   onSaveSyllabus: (targetId: string, syllabus: CustomSyllabus) => void;
+  currentStudent?: { name: string; email: string } | null;
 }
 
 export function PasteEditalModal({
@@ -30,9 +31,14 @@ export function PasteEditalModal({
   onClose,
   currentTarget,
   onSaveSyllabus,
+  currentStudent,
 }: PasteEditalModalProps) {
   const [editalText, setEditalText] = useState('');
-  const [editalTitle, setEditalTitle] = useState(`Edital Verticalizado • ${currentTarget.name}`);
+  const [editalTitle, setEditalTitle] = useState(
+    currentStudent 
+      ? `Edital Verticalizado (${currentStudent.name.split(' ')[0]}) • ${currentTarget.name}`
+      : `Edital Verticalizado • ${currentTarget.name}`
+  );
   const [parsedPreview, setParsedPreview] = useState<CustomSyllabus | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [activeStep, setActiveStep] = useState<'paste' | 'preview'>('paste');
@@ -87,7 +93,8 @@ export function PasteEditalModal({
                 </span>
               </div>
               <p className="text-xs text-[#64748B]">
-                Vincule o conteúdo programático oficial a <strong className="text-[#0F172A]">{currentTarget.name}</strong>.
+                Vincule o conteúdo programático oficial a <strong className="text-[#0F172A]">{currentTarget.name}</strong>
+                {currentStudent && <> no perfil exclusivo de <strong className="text-[#2563EB]">{currentStudent.name}</strong></>}.
               </p>
             </div>
           </div>

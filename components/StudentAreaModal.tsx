@@ -30,6 +30,7 @@ import {
   Clock
 } from 'lucide-react';
 import { ManagedUser } from '@/lib/types';
+import { verifyAdminPassword, isAdminIdentifier } from '@/lib/authConfig';
 import { StudentPhotoCapture } from './StudentPhotoCapture';
 import { StudentCardBadge } from './StudentCardBadge';
 
@@ -108,13 +109,15 @@ export function StudentAreaModal({
       return;
     }
 
-    if (
-      emailTrim === 'admin' ||
-      emailTrim === 'superadmin' ||
-      emailTrim === 'admin@aprovacaototal.com' ||
-      emailTrim === 'pedagogico@aprovacaototal.com' ||
-      emailTrim === 'legongamer0306@gmail.com'
-    ) {
+    const isAdminAccount =
+      isAdminIdentifier(emailTrim) ||
+      users.some((u) => u.email.toLowerCase() === emailTrim && u.role === 'admin');
+
+    if (isAdminAccount) {
+      if (!verifyAdminPassword(passTrim)) {
+        setLoginError('Senha de administrador incorreta. Digite a senha master cadastrada.');
+        return;
+      }
       onClose();
       if (onNavigateToAdmin) {
         onNavigateToAdmin();

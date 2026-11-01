@@ -138,6 +138,18 @@ export interface SubjectPerformance {
   status: 'Domínio' | 'Em Evolução' | 'Atenção Crítica';
 }
 
+export interface AuditEntry {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  action: 'resolucao_questao' | 'revisao_lei_seca' | 'simulado' | 'edital_colado' | 'ciclo_ajustado';
+  description: string;
+  subject?: string;
+  result?: 'correto' | 'incorreto' | 'concluido';
+  timestamp: string;
+  details?: string;
+}
+
 export interface MockExam {
   id: string;
   title: string;

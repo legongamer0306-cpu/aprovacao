@@ -1,4 +1,4 @@
-import { ExamTarget, ExamQuestion, Flashcard, DailyTask, SubjectPerformance, MindMap, ManagedUser, LegalItem, StudyPDF } from './types';
+import { ExamTarget, ExamQuestion, Flashcard, DailyTask, SubjectPerformance, MindMap, ManagedUser, LegalItem, StudyPDF, CycleDay, AuditEntry, CustomSyllabus } from './types';
 
 export const TARGET_EXAMS: ExamTarget[] = [
   {
@@ -860,6 +860,437 @@ export function getInitialStudentPerformance(studentId: string, targetExam: stri
   ];
 }
 
+// Mapeamento isolado de tarefas diárias (Cronograma) por conta de aluno
+export const STUDENT_TASKS_MAP: Record<string, DailyTask[]> = {
+  // Carlos Eduardo Fontes - RFB 2026
+  'usr-1': [
+    {
+      id: 'task-c1',
+      title: 'Meta de Resolução: Direito Tributário (Imunidades & FGV)',
+      subject: 'Direito Tributário',
+      type: 'questoes',
+      durationMinutes: 45,
+      completed: true,
+      targetCount: 20,
+      currentCount: 20,
+    },
+    {
+      id: 'task-c2',
+      title: 'Lei Seca: CF/88 Artigos 145 ao 162 (Do Sistema Tributário)',
+      subject: 'Legislação Constitucional',
+      type: 'lei_seca',
+      durationMinutes: 30,
+      completed: true,
+      targetCount: 18,
+      currentCount: 18,
+    },
+    {
+      id: 'task-c3',
+      title: 'Ciclo de Revisão Ativa SRS: Flashcards de NBC TA 200',
+      subject: 'Revisão Espaçada',
+      type: 'revisao',
+      durationMinutes: 25,
+      completed: false,
+      targetCount: 35,
+      currentCount: 14,
+    },
+    {
+      id: 'task-c4',
+      title: 'Bloco de Simulação Cronometrada: Contabilidade Geral',
+      subject: 'Contabilidade Geral',
+      type: 'simulado',
+      durationMinutes: 60,
+      completed: false,
+      targetCount: 15,
+      currentCount: 0,
+    },
+    {
+      id: 'task-c5',
+      title: 'Teoria Focada: Jurisprudência em Teses STJ (Edição 194)',
+      subject: 'Direito Administrativo',
+      type: 'teoria',
+      durationMinutes: 40,
+      completed: false,
+      targetCount: 1,
+      currentCount: 0,
+    },
+  ],
+
+  // Mariana Silveira Ramos - OAB 43º
+  'usr-2': [
+    {
+      id: 'task-m1',
+      title: '8 Questões Garantidas: Estatuto e Código de Ética da OAB',
+      subject: 'Ética Profissional',
+      type: 'questoes',
+      durationMinutes: 40,
+      completed: true,
+      targetCount: 16,
+      currentCount: 16,
+    },
+    {
+      id: 'task-m2',
+      title: 'Lei Seca: Estatuto da Advocacia (Lei 8.906/94 Arts. 1º a 25)',
+      subject: 'Legislação OAB',
+      type: 'lei_seca',
+      durationMinutes: 35,
+      completed: true,
+      targetCount: 25,
+      currentCount: 25,
+    },
+    {
+      id: 'task-m3',
+      title: 'Revisão Ativa SRS: Prazos e Recursos no Novo CPC',
+      subject: 'Direito Processual Civil',
+      type: 'revisao',
+      durationMinutes: 30,
+      completed: false,
+      targetCount: 20,
+      currentCount: 8,
+    },
+    {
+      id: 'task-m4',
+      title: 'Simulado Rápido FGV: Direito Penal & Crimes Hediondos',
+      subject: 'Direito Penal',
+      type: 'simulado',
+      durationMinutes: 45,
+      completed: false,
+      targetCount: 12,
+      currentCount: 0,
+    },
+  ],
+
+  // Roberto Viana Mendonça - TCU 2026
+  'usr-3': [
+    {
+      id: 'task-r1',
+      title: 'Controle Externo: Competências Constitucionais do TCU (CF Art. 71)',
+      subject: 'Controle Externo',
+      type: 'questoes',
+      durationMinutes: 50,
+      completed: false,
+      targetCount: 20,
+      currentCount: 6,
+    },
+    {
+      id: 'task-r2',
+      title: 'Auditoria Governamental: Matriz de Achados e Evidências',
+      subject: 'Auditoria Governamental',
+      type: 'teoria',
+      durationMinutes: 45,
+      completed: false,
+      targetCount: 1,
+      currentCount: 0,
+    },
+    {
+      id: 'task-r3',
+      title: 'Lei Seca: Lei 8.443/92 (Lei Orgânica do TCU Arts. 1º a 30)',
+      subject: 'Legislação do TCU',
+      type: 'lei_seca',
+      durationMinutes: 35,
+      completed: false,
+      targetCount: 30,
+      currentCount: 10,
+    },
+  ],
+};
+
+// Mapeamento isolado de Ciclo de Estudos semanal por conta de aluno
+export const STUDENT_CYCLES_MAP: Record<string, CycleDay[]> = {
+  // Carlos - Ciclo Fiscal
+  'usr-1': [
+    { day: 'Seg', block: 'Tributário + CPC 47', status: 'concluido', hours: 4.2 },
+    { day: 'Ter', block: 'Constitucional + Súmulas', status: 'concluido', hours: 4.5 },
+    { day: 'Qua', block: 'Administrativo + Revisão SRS', status: 'hoje', hours: 4.0 },
+    { day: 'Qui', block: 'Auditoria Governamental', status: 'pendente', hours: 4.0 },
+    { day: 'Sex', block: 'Legislação Aduaneira', status: 'pendente', hours: 4.0 },
+    { day: 'Sáb', block: 'Simulado Geral 70Q', status: 'pendente', hours: 5.5 },
+    { day: 'Dom', block: 'Discursivas & Diagnóstico', status: 'pendente', hours: 3.0 },
+  ],
+  // Mariana - Ciclo Jurídico OAB
+  'usr-2': [
+    { day: 'Seg', block: 'Ética Profissional (8Q) + Estatuto', status: 'concluido', hours: 4.0 },
+    { day: 'Ter', block: 'Direito Constitucional + Remédios', status: 'concluido', hours: 4.2 },
+    { day: 'Qua', block: 'Direito Civil & Processo Civil', status: 'hoje', hours: 4.5 },
+    { day: 'Qui', block: 'Direito Penal & Processo Penal', status: 'pendente', hours: 4.0 },
+    { day: 'Sex', block: 'Trabalho & Administrativo', status: 'pendente', hours: 3.5 },
+    { day: 'Sáb', block: 'Simulado Oficial FGV 80Q', status: 'pendente', hours: 5.0 },
+    { day: 'Dom', block: 'Revisão de Erros & Flashcards', status: 'pendente', hours: 2.5 },
+  ],
+  // Roberto - Ciclo Controle & Auditoria TCU
+  'usr-3': [
+    { day: 'Seg', block: 'Controle Externo & Jurisprudência TCU', status: 'hoje', hours: 4.0 },
+    { day: 'Ter', block: 'Auditoria Governamental & ISSAI', status: 'pendente', hours: 4.5 },
+    { day: 'Qua', block: 'AFO & Lei de Resp. Fiscal', status: 'pendente', hours: 4.0 },
+    { day: 'Qui', block: 'Direito Administrativo & Licitações', status: 'pendente', hours: 4.0 },
+    { day: 'Sex', block: 'Contabilidade Pública & Análise', status: 'pendente', hours: 3.5 },
+    { day: 'Sáb', block: 'Simulado Cebraspe C/E 100Q', status: 'pendente', hours: 5.0 },
+    { day: 'Dom', block: 'Redação de Parecer Técnico', status: 'pendente', hours: 3.0 },
+  ],
+};
+
+// Mapeamento isolado de editais colados e verticalizados por aluno (alunoId -> targetId -> syllabus)
+export const STUDENT_SYLLABI_MAP: Record<string, Record<string, CustomSyllabus>> = {
+  'usr-1': {
+    'rfb-auditor': {
+      id: 'syl-carlos-rfb',
+      targetId: 'rfb-auditor',
+      title: 'Edital Verticalizado Personalizado • RFB Auditor (Carlos)',
+      pastedContent: 'Direito Tributário: Imunidades, CTN, Vigência e Aplicação\nDireito Constitucional: Organização do Estado, Remédios Constitucionais\nContabilidade Geral: CPC 00, CPC 47, Balanço Patrimonial',
+      createdAt: 'Hoje às 09:15',
+      subjects: [
+        {
+          id: 'sub-trib',
+          subject: 'Direito Tributário',
+          totalTopics: 6,
+          completedTopics: 4,
+          topics: [
+            { id: 'top-1', name: 'Princípios e Limitações Constitucionais ao Poder de Tributar', completed: true, weight: 'Alto' },
+            { id: 'top-2', name: 'Imunidades Tributárias (CF/88 Art. 150, VI)', completed: true, weight: 'Alto' },
+            { id: 'top-3', name: 'Obrigação Tributária e Fato Gerador (CTN)', completed: true, weight: 'Alto' },
+            { id: 'top-4', name: 'Crédito Tributário: Suspensão, Extinção e Exclusão', completed: true, weight: 'Alto' },
+            { id: 'top-5', name: 'Administração Tributária e Fiscalização', completed: false, weight: 'Médio' },
+            { id: 'top-6', name: 'Impostos da União: IRPJ, CSLL, IPI, II, IE, IOF', completed: false, weight: 'Alto' },
+          ]
+        },
+        {
+          id: 'sub-const',
+          subject: 'Direito Constitucional',
+          totalTopics: 4,
+          completedTopics: 3,
+          topics: [
+            { id: 'top-c1', name: 'Direitos e Deveres Individuais e Coletivos (Art. 5º)', completed: true, weight: 'Alto' },
+            { id: 'top-c2', name: 'Remédios Constitucionais (MS, HD, HC, MI, AP)', completed: true, weight: 'Alto' },
+            { id: 'top-c3', name: 'Organização Político-Administrativa da República', completed: true, weight: 'Médio' },
+            { id: 'top-c4', name: 'Funções Essenciais à Justiça e Fiscalização Contábil', completed: false, weight: 'Médio' },
+          ]
+        }
+      ]
+    }
+  },
+  'usr-2': {
+    'oab-43': {
+      id: 'syl-mariana-oab',
+      targetId: 'oab-43',
+      title: 'Edital Verticalizado Estratégico • OAB 43º (Mariana)',
+      pastedContent: 'Ética Profissional: Estatuto da OAB, Regulamento Geral, Código de Ética\nDireito Constitucional: Direitos Fundamentais, Controle de Constitucionalidade\nDireito Civil: Contratos, Responsabilidade Civil, Família',
+      createdAt: 'Ontem às 14:30',
+      subjects: [
+        {
+          id: 'sub-oab-etica',
+          subject: 'Ética e Estatuto da OAB (8 Questões Garantidas)',
+          totalTopics: 4,
+          completedTopics: 3,
+          topics: [
+            { id: 'top-e1', name: 'Atividades e Prerrogativas do Advogado (Lei 8.906/94)', completed: true, weight: 'Alto' },
+            { id: 'top-e2', name: 'Incompatibilidades e Impedimentos', completed: true, weight: 'Alto' },
+            { id: 'top-e3', name: 'Infrações e Sanções Disciplinares', completed: true, weight: 'Alto' },
+            { id: 'top-e4', name: 'Honorários Advocatícios e Sociedade de Advogados', completed: false, weight: 'Alto' },
+          ]
+        },
+        {
+          id: 'sub-oab-civil',
+          subject: 'Direito Civil & Processo Civil',
+          totalTopics: 3,
+          completedTopics: 1,
+          topics: [
+            { id: 'top-civ1', name: 'Parte Geral: Pessoas Naturais, Bens e Negócio Jurídico', completed: true, weight: 'Médio' },
+            { id: 'top-civ2', name: 'Direito das Obrigações e Contratos em Espécie', completed: false, weight: 'Alto' },
+            { id: 'top-civ3', name: 'Tutela Provisória e Recursos no CPC/2015', completed: false, weight: 'Alto' },
+          ]
+        }
+      ]
+    }
+  }
+};
+
+// Histórico de auditoria isolado por perfil de estudante
+export const STUDENT_AUDIT_LOGS_MAP: Record<string, AuditEntry[]> = {
+  'usr-1': [
+    {
+      id: 'aud-c1',
+      studentId: 'usr-1',
+      studentName: 'Carlos Eduardo Fontes',
+      action: 'resolucao_questao',
+      description: 'Acerto em questão FGV (Direito Constitucional - Habeas Data)',
+      subject: 'Direito Constitucional',
+      result: 'correto',
+      timestamp: 'Hoje às 17:42',
+      details: 'Gabarito fundamentado revisado com citação da Súmula 2 do STJ.',
+    },
+    {
+      id: 'aud-c2',
+      studentId: 'usr-1',
+      studentName: 'Carlos Eduardo Fontes',
+      action: 'revisao_lei_seca',
+      description: 'Conclusão de leitura do Art. 150 da CF/88 (Imunidades Tributárias)',
+      subject: 'Direito Tributário',
+      result: 'concluido',
+      timestamp: 'Hoje às 16:30',
+      details: '30 minutos dedicados. Marcações de jurisprudência atualizadas.',
+    },
+    {
+      id: 'aud-c3',
+      studentId: 'usr-1',
+      studentName: 'Carlos Eduardo Fontes',
+      action: 'edital_colado',
+      description: 'Atualização do Edital Verticalizado Personalizado para RFB 2026',
+      subject: 'Planejamento',
+      result: 'concluido',
+      timestamp: 'Hoje às 09:15',
+      details: '10 tópicos mapeados com pesos estratégicos.',
+    },
+  ],
+  'usr-2': [
+    {
+      id: 'aud-m1',
+      studentId: 'usr-2',
+      studentName: 'Mariana Silveira Ramos',
+      action: 'resolucao_questao',
+      description: 'Acerto em questão FGV (Ética da Advocacia - Inviolabilidade do Escritório)',
+      subject: 'Ética Profissional',
+      result: 'correto',
+      timestamp: 'Hoje às 15:10',
+      details: 'Art. 7º, II do Estatuto da OAB memorizado.',
+    },
+    {
+      id: 'aud-m2',
+      studentId: 'usr-2',
+      studentName: 'Mariana Silveira Ramos',
+      action: 'edital_colado',
+      description: 'Importação do Edital OAB 43º Unificado',
+      subject: 'Planejamento',
+      result: 'concluido',
+      timestamp: 'Ontem às 14:30',
+      details: 'Módulo prioritário de Ética com 8 questões garantidas.',
+    },
+  ],
+  'usr-3': [
+    {
+      id: 'aud-r1',
+      studentId: 'usr-3',
+      studentName: 'Roberto Viana Mendonça',
+      action: 'resolucao_questao',
+      description: 'Erro em questão Cebraspe (Controle Externo - Tomada de Contas Especial)',
+      subject: 'Controle Externo',
+      result: 'incorreto',
+      timestamp: 'Ontem às 22:15',
+      details: 'Prazo prescricional da pretensão ressarcitória do TCU (Tema 899 STF).',
+    },
+  ]
+};
+
+export function getInitialStudentTasks(studentId: string, targetExam: string): DailyTask[] {
+  if (STUDENT_TASKS_MAP[studentId]) {
+    return STUDENT_TASKS_MAP[studentId];
+  }
+  const isJuridico = targetExam.toLowerCase().includes('oab') || targetExam.toLowerCase().includes('advogado');
+  if (isJuridico) {
+    return [
+      {
+        id: `task-gen-1-${Date.now()}`,
+        title: 'Meta de Ética: 10 Questões do Estatuto da OAB',
+        subject: 'Ética Profissional',
+        type: 'questoes',
+        durationMinutes: 40,
+        completed: false,
+        targetCount: 10,
+        currentCount: 0,
+      },
+      {
+        id: `task-gen-2-${Date.now()}`,
+        title: 'Lei Seca: CF/88 Artigo 5º (Direitos e Garantias)',
+        subject: 'Direito Constitucional',
+        type: 'lei_seca',
+        durationMinutes: 30,
+        completed: false,
+        targetCount: 15,
+        currentCount: 0,
+      },
+      {
+        id: `task-gen-3-${Date.now()}`,
+        title: 'Revisão Ativa SRS: Conceitos Fundamentais',
+        subject: 'Revisão Espaçada',
+        type: 'revisao',
+        durationMinutes: 25,
+        completed: false,
+        targetCount: 20,
+        currentCount: 0,
+      },
+    ];
+  }
+
+  return [
+    {
+      id: `task-gen-1-${Date.now()}`,
+      title: 'Meta de Resolução: 20 Questões de Concurso',
+      subject: 'Direito Constitucional',
+      type: 'questoes',
+      durationMinutes: 45,
+      completed: false,
+      targetCount: 20,
+      currentCount: 0,
+    },
+    {
+      id: `task-gen-2-${Date.now()}`,
+      title: 'Lei Seca: Leitura de Legislação Pertinente ao Cargo',
+      subject: 'Legislação Específica',
+      type: 'lei_seca',
+      durationMinutes: 30,
+      completed: false,
+      targetCount: 15,
+      currentCount: 0,
+    },
+    {
+      id: `task-gen-3-${Date.now()}`,
+      title: 'Revisão Espaçada: Flashcards e Súmulas Vinculantes',
+      subject: 'Revisão Espaçada',
+      type: 'revisao',
+      durationMinutes: 25,
+      completed: false,
+      targetCount: 25,
+      currentCount: 0,
+    },
+  ];
+}
+
+export function getInitialStudentCycle(studentId: string, targetExam: string): CycleDay[] {
+  if (STUDENT_CYCLES_MAP[studentId]) {
+    return STUDENT_CYCLES_MAP[studentId];
+  }
+  return [
+    { day: 'Seg', block: 'Bloco 1 • Teoria & Questões Base', status: 'hoje', hours: 4.0 },
+    { day: 'Ter', block: 'Bloco 2 • Disciplinas Específicas', status: 'pendente', hours: 4.0 },
+    { day: 'Qua', block: 'Bloco 3 • Lei Seca & Revisão SRS', status: 'pendente', hours: 3.5 },
+    { day: 'Qui', block: 'Bloco 4 • Jurisprudência & Súmulas', status: 'pendente', hours: 4.0 },
+    { day: 'Sex', block: 'Bloco 5 • Treino de Questões Inéditas', status: 'pendente', hours: 3.5 },
+    { day: 'Sáb', block: 'Simulado Diagnóstico Cronometrado', status: 'pendente', hours: 5.0 },
+    { day: 'Dom', block: 'Auditoria de Erros & Descanso Ativo', status: 'pendente', hours: 2.5 },
+  ];
+}
+
+export function getInitialStudentAuditLogs(studentId: string): AuditEntry[] {
+  if (STUDENT_AUDIT_LOGS_MAP[studentId]) {
+    return STUDENT_AUDIT_LOGS_MAP[studentId];
+  }
+  return [
+    {
+      id: `aud-init-${Date.now()}`,
+      studentId,
+      action: 'ciclo_ajustado',
+      description: 'Conta de estudante inicializada com métricas, cronograma e auditoria isolados.',
+      subject: 'Sistema',
+      result: 'concluido',
+      timestamp: 'Recente',
+      details: 'Vault privado ativado. Proteção e isolamento total entre perfis.',
+    }
+  ];
+}
+
+export function getInitialStudentSyllabi(studentId: string): Record<string, CustomSyllabus> {
+  return STUDENT_SYLLABI_MAP[studentId] || {};
+}
+
 export const MOCK_HOURLY_HEATMAP = [
   { day: 'Seg', hours: 4.2, questions: 65, accuracy: 84 },
   { day: 'Ter', hours: 5.1, questions: 82, accuracy: 88 },
@@ -1540,6 +1971,36 @@ export const PRESET_STUDENT_AVATARS = [
 ];
 
 export const MOCK_MANAGED_USERS: ManagedUser[] = [
+  {
+    id: 'usr-admin-01',
+    name: 'Super Administrador Geral',
+    email: 'admin@aprovacaototal.com',
+    password: 'admin03061983', // Senha atual de administrador solicitada pelo usuário
+    role: 'admin',
+    targetExam: 'Administração & Controle Master',
+    questionsAnswered: 0,
+    accuracyRate: 100,
+    status: 'ativo',
+    avatarUrl: 'https://picsum.photos/seed/admin-master/240/240',
+    phone: '(11) 98000-0306',
+    registrationDate: '01/01/2026',
+    lastActive: 'Agora'
+  },
+  {
+    id: 'usr-admin-02',
+    name: 'Administrador Geral (Lê Gonçalves)',
+    email: 'legongamer0306@gmail.com',
+    password: 'admin03061983', // Senha atual de administrador solicitada pelo usuário
+    role: 'admin',
+    targetExam: 'Gestão Master Aprovação Total',
+    questionsAnswered: 0,
+    accuracyRate: 100,
+    status: 'ativo',
+    avatarUrl: 'https://picsum.photos/seed/admin-legon/240/240',
+    phone: '(11) 98000-0306',
+    registrationDate: '01/01/2026',
+    lastActive: 'Agora'
+  },
   {
     id: 'usr-1',
     name: 'Carlos Eduardo Fontes',

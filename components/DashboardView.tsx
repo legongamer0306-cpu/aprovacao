@@ -25,7 +25,7 @@ interface DashboardViewProps {
   onToggleTask: (taskId: string) => void;
   performances: SubjectPerformance[];
   onNavigateToQuestions: (subjectFilter?: string) => void;
-  onNavigateToFlashcards: () => void;
+  onNavigateToSimulados?: () => void;
   onOpenPasteEdital?: () => void;
 }
 
@@ -35,7 +35,7 @@ export function DashboardView({
   onToggleTask,
   performances,
   onNavigateToQuestions,
-  onNavigateToFlashcards,
+  onNavigateToSimulados,
   onOpenPasteEdital,
 }: DashboardViewProps) {
   const completedTasks = tasks.filter(t => t.completed).length;
@@ -151,28 +151,30 @@ export function DashboardView({
           </p>
         </div>
 
-        {/* Metric 4: Revisão SRS Flashcards */}
+        {/* Metric 4: Simulados & Provas Realizadas */}
         <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-xs hover:border-[#CBD5E1] transition-all">
           <div className="flex items-center justify-between text-xs text-[#64748B] font-semibold mb-2">
-            <span>Cards para Revisão</span>
+            <span>Simulados Oficiais</span>
             <span className="p-1.5 rounded-md bg-[#F5F3FF] text-[#7C3AED]">
-              <BrainCircuit className="w-3.5 h-3.5" />
+              <Award className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl md:text-3xl font-extrabold text-[#0F172A] tabular-nums">
-              14 <span className="text-xs font-semibold text-[#64748B]">pendentes</span>
+              8 <span className="text-xs font-semibold text-[#64748B]">provas</span>
             </span>
-            <button 
-              onClick={onNavigateToFlashcards}
-              className="text-xs font-bold text-[#2563EB] hover:underline cursor-pointer"
-            >
-              Revisar agora
-            </button>
+            {onNavigateToSimulados && (
+              <button 
+                onClick={onNavigateToSimulados}
+                className="text-xs font-bold text-[#2563EB] hover:underline cursor-pointer"
+              >
+                Ver simulados →
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-[#10B981] mt-3 font-medium">
             <CheckCircle2 className="w-3 h-3" />
-            <span>Retenção estimada: 89%</span>
+            <span>Média de acertos: 81.4%</span>
           </div>
         </div>
       </div>

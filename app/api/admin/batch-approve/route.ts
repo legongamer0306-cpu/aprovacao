@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UsersRepository } from '@/src/db/repositories/users.repository';
-import { sendApprovalEmail } from '@/../lib/services/email';
-import { sendApprovalSMS } from '@/../lib/services/sms';
+import { sendApprovalEmail } from '@/lib/services/email';
+import { sendApprovalSMS } from '@/lib/services/sms';
 
 const isAdmin = (req: NextRequest): boolean => {
   return !!req.headers.get('x-admin-id');

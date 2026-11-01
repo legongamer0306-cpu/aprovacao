@@ -83,7 +83,6 @@ export function Sidebar({
     { id: 'dashboard', label: 'Painel Geral', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'questoes', label: 'Banco de Questões', icon: <BookOpenCheck className="w-4 h-4" />, badge: '4 novas' },
     { id: 'simulados', label: 'Simulados & Provas', icon: <Timer className="w-4 h-4 text-emerald-600" />, badge: 'Novo' },
-    { id: 'flashcards', label: 'Flashcards SRS', icon: <Layers className="w-4 h-4" />, badge: '14 pend' },
     { id: 'mapas', label: 'Mapas Mentais', icon: <Network className="w-4 h-4 text-purple-600" />, badge: 'Visual' },
     { id: 'cronograma', label: 'Cronograma & Ciclo', icon: <CalendarCheck className="w-4 h-4" /> },
     { id: 'pdfs', label: 'Meus PDFs', icon: <FileText className="w-4 h-4 text-[#2563EB]" />, badge: 'Classes' },

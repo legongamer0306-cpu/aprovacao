@@ -5,7 +5,6 @@ import {
   Network, 
   Search, 
   Sparkles, 
-  Layers, 
   BookOpen, 
   Plus, 
   Filter, 
@@ -22,12 +21,10 @@ import { MOCK_MIND_MAPS } from '@/lib/mockData';
 import { MindMapViewer } from './MindMapViewer';
 
 interface MapasMentaisViewProps {
-  onNavigateToFlashcards?: () => void;
   onNavigateToQuestions?: (subject: string) => void;
 }
 
 export function MapasMentaisView({
-  onNavigateToFlashcards,
   onNavigateToQuestions,
 }: MapasMentaisViewProps) {
   const [mindMaps, setMindMaps] = useState<MindMap[]>(MOCK_MIND_MAPS);
@@ -148,16 +145,6 @@ export function MapasMentaisView({
         </div>
 
         <div className="flex items-center gap-2">
-          {onNavigateToFlashcards && (
-            <button
-              onClick={onNavigateToFlashcards}
-              className="px-3.5 py-2 text-xs font-bold rounded-xl border border-[#CBD5E1] bg-white text-[#0F172A] hover:bg-slate-50 transition-all flex items-center gap-1.5 shadow-2xs"
-            >
-              <Layers className="w-3.5 h-3.5 text-[#2563EB]" />
-              <span>Ver Flashcards SRS</span>
-            </button>
-          )}
-
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="px-4 py-2 text-xs font-bold rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition-all flex items-center gap-1.5 shadow-sm"

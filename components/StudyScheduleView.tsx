@@ -28,6 +28,7 @@ interface StudyScheduleViewProps {
   onUpdateTasks?: (newTasks: DailyTask[]) => void;
   cycleDays?: CycleDay[];
   onUpdateCycleDays?: (newDays: CycleDay[]) => void;
+  currentStudent?: { name: string; email: string; targetExam: string } | null;
 }
 
 export function StudyScheduleView({
@@ -38,6 +39,7 @@ export function StudyScheduleView({
   onUpdateTasks,
   cycleDays: initialCycleDays,
   onUpdateCycleDays,
+  currentStudent,
 }: StudyScheduleViewProps) {
   const [activeCycleTab, setActiveCycleTab] = useState<'diario' | 'semanal' | 'edital'>('diario');
   const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
@@ -86,6 +88,11 @@ export function StudyScheduleView({
             <span className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
               Metodologia de Ciclos Intercalados
             </span>
+            {currentStudent && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F1F5F9] text-[#0F172A] border border-[#CBD5E1]">
+                Perfil: {currentStudent.name.split(' ')[0]}
+              </span>
+            )}
           </div>
           <h2 className="text-xl font-extrabold text-[#0F172A]">
             Cronograma Inteligente & Ciclo de Estudos

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sidebar, 
   NavigationTab 
@@ -8,7 +8,6 @@ import {
 import { Header } from '@/components/Header';
 import { DashboardView } from '@/components/DashboardView';
 import { QuestionBankView } from '@/components/QuestionBankView';
-import { FlashcardsSRSView } from '@/components/FlashcardsSRSView';
 import { StudyScheduleView } from '@/components/StudyScheduleView';
 import { PerformanceAuditView } from '@/components/PerformanceAuditView';
 import { JurisprudenceView } from '@/components/JurisprudenceView';
@@ -25,11 +24,18 @@ import { StudentAccessGate } from '@/components/StudentAccessGate';
 import { 
   TARGET_EXAMS, 
   MOCK_QUESTIONS, 
-  MOCK_FLASHCARDS, 
   MOCK_DAILY_TASKS, 
   MOCK_SUBJECT_PERFORMANCES,
   STUDENT_PERFORMANCES_MAP,
   getInitialStudentPerformance,
+  STUDENT_TASKS_MAP,
+  getInitialStudentTasks,
+  STUDENT_CYCLES_MAP,
+  getInitialStudentCycle,
+  STUDENT_SYLLABI_MAP,
+  getInitialStudentSyllabi,
+  STUDENT_AUDIT_LOGS_MAP,
+  getInitialStudentAuditLogs,
   MOCK_PDFS,
   PDF_SUBJECT_CLASSES,
   MOCK_SIMULADOS,
@@ -45,7 +51,10 @@ import {
   LegalItem,
   ManagedUser,
   AdminSession,
-  SubjectPerformance
+  SubjectPerformance,
+  DailyTask,
+  CycleDay,
+  AuditEntry
 } from '@/lib/types';
 import { 
   LayoutDashboard, 
@@ -57,7 +66,8 @@ import {
   Network,
   ShieldAlert,
   ShieldCheck,
-  GraduationCap
+  GraduationCap,
+  Timer
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -70,8 +80,25 @@ export default function HomePage() {
   const [isPasteEditalOpen, setIsPasteEditalOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isStudentAreaOpen, setIsStudentAreaOpen] = useState(false);
-  const [tasks, setTasks] = useState(MOCK_DAILY_TASKS);
-  const [questions, setQuestions] = useState<ExamQuestion[]>(MOCK_QUESTIONS);
+
+  // Question bank state (persisted automatically to localStorage)
+  const [questions, setQuestions] = useState<ExamQuestion[]>(() => {
+    if (typeof window === 'undefined') return MOCK_QUESTIONS;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_custom_questions');
+      if (saved) {
+        const parsed: ExamQuestion[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(MOCK_QUESTIONS.map((q) => q.id));
+          const newOnes = parsed.filter((q) => !existingIds.has(q.id));
+          return [...newOnes, ...MOCK_QUESTIONS];
+        }
+      }
+    } catch (err) {
+      console.error('Falha ao restaurar questões persistidas:', err);
+    }
+    return MOCK_QUESTIONS;
+  });
   const [subjectFilterForQuestions, setSubjectFilterForQuestions] = useState<string | undefined>(undefined);
   const [streakDays, setStreakDays] = useState(18);
   const [searchQuery, setSearchQuery] = useState('');
@@ -79,8 +106,20 @@ export default function HomePage() {
   // Student Session State (Active logged-in student)
   const [currentStudent, setCurrentStudent] = useState<ManagedUser | null>(null);
 
-  // Per-student isolated performance metrics (Multi-tenancy isolation)
+  // 1. Isolamento de Métricas por Aluno (Multi-tenancy restrito)
   const [studentPerformances, setStudentPerformances] = useState<Record<string, SubjectPerformance[]>>(STUDENT_PERFORMANCES_MAP);
+
+  // 2. Isolamento de Tarefas / Cronograma por Aluno
+  const [studentTasks, setStudentTasks] = useState<Record<string, DailyTask[]>>(STUDENT_TASKS_MAP);
+
+  // 3. Isolamento de Ciclo de Estudos por Aluno
+  const [studentCycles, setStudentCycles] = useState<Record<string, CycleDay[]>>(STUDENT_CYCLES_MAP);
+
+  // 4. Isolamento de Editais Colados e Verticalizados por Aluno (studentId -> targetId -> CustomSyllabus)
+  const [studentSyllabi, setStudentSyllabi] = useState<Record<string, Record<string, CustomSyllabus>>>(STUDENT_SYLLABI_MAP);
+
+  // 5. Isolamento de Histórico de Auditoria por Aluno
+  const [studentAuditLogs, setStudentAuditLogs] = useState<Record<string, AuditEntry[]>>(STUDENT_AUDIT_LOGS_MAP);
 
   // Simulados State & Active Exam
   const [simulados, setSimulados] = useState<MockExam[]>(MOCK_SIMULADOS);
@@ -100,13 +139,54 @@ export default function HomePage() {
     role: 'super_admin',
   });
 
-  // Question Handlers
+  // Question Handlers - Salva automaticamente no banco de questões permanente (localStorage e state)
   const handleAddQuestion = (newQuestion: ExamQuestion) => {
-    setQuestions((prev) => [newQuestion, ...prev]);
+    setQuestions((prev) => {
+      const updated = [newQuestion, ...prev];
+      try {
+        const customToPersist = updated.filter(
+          (q) => q.origin === 'membros' || q.origin === 'ia' || q.id.startsWith('q-mem-')
+        );
+        localStorage.setItem('aprovacao_total_custom_questions', JSON.stringify(customToPersist));
+      } catch (err) {
+        console.error('Erro ao salvar questão no banco persistente:', err);
+      }
+      return updated;
+    });
+
+    // Se houver aluno logado, registra na trilha de auditoria do aluno
+    if (currentStudent) {
+      const auditItem: AuditEntry = {
+        id: `aud-qadd-${Date.now()}`,
+        studentId: currentStudent.id,
+        studentName: currentStudent.name,
+        action: 'resolucao_questao',
+        description: `Nova questão criada e salva automaticamente no banco (${newQuestion.subject})`,
+        subject: newQuestion.subject,
+        result: 'concluido',
+        timestamp: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        details: `Questão ${newQuestion.code} adicionada ao acervo permanente da comunidade.`,
+      };
+      setStudentAuditLogs((prev) => ({
+        ...prev,
+        [currentStudent.id]: [auditItem, ...(prev[currentStudent.id] || [])],
+      }));
+    }
   };
 
   const handleDeleteQuestion = (questionId: string) => {
-    setQuestions((prev) => prev.filter((q) => q.id !== questionId));
+    setQuestions((prev) => {
+      const filtered = prev.filter((q) => q.id !== questionId);
+      try {
+        const customToPersist = filtered.filter(
+          (q) => q.origin === 'membros' || q.origin === 'ia' || q.id.startsWith('q-mem-')
+        );
+        localStorage.setItem('aprovacao_total_custom_questions', JSON.stringify(customToPersist));
+      } catch (err) {
+        console.error('Erro ao atualizar banco persistente após exclusão:', err);
+      }
+      return filtered;
+    });
   };
 
   // Simulado Handlers
@@ -209,6 +289,27 @@ export default function HomePage() {
       ...prev,
       [newStudent.id]: getInitialStudentPerformance(newStudent.id, newStudent.targetExam),
     }));
+    // Inicializar cronograma/tarefas isoladas para o novo aluno
+    setStudentTasks((prev) => ({
+      ...prev,
+      [newStudent.id]: getInitialStudentTasks(newStudent.id, newStudent.targetExam),
+    }));
+    // Inicializar ciclo de estudos isolado para o novo aluno
+    setStudentCycles((prev) => ({
+      ...prev,
+      [newStudent.id]: getInitialStudentCycle(newStudent.id, newStudent.targetExam),
+    }));
+    // Inicializar trilha de auditoria isolada para o novo aluno
+    setStudentAuditLogs((prev) => ({
+      ...prev,
+      [newStudent.id]: getInitialStudentAuditLogs(newStudent.id),
+    }));
+    // Inicializar repositório de editais do novo aluno
+    setStudentSyllabi((prev) => ({
+      ...prev,
+      [newStudent.id]: getInitialStudentSyllabi(newStudent.id),
+    }));
+
     setCurrentStudent(newStudent);
     if (currentTab === 'admin') {
       setCurrentTab('dashboard');
@@ -427,30 +528,113 @@ export default function HomePage() {
     });
   };
 
-  // Syllabus handler: Save parsed edital to target
+  // Identificador do perfil ativo para isolamento total
+  const activeStudentId = currentStudent?.id || 'usr-1';
+
+  // 1. Isolamento do Edital Colado: Cada perfil possui seu próprio mapeamento de editais colados
+  const activeSyllabus = currentStudent
+    ? (studentSyllabi[currentStudent.id]?.[currentTarget.id] || currentTarget.syllabus)
+    : (studentSyllabi['usr-1']?.[currentTarget.id] || currentTarget.syllabus);
+
+  const targetWithStudentSyllabus: ExamTarget = {
+    ...currentTarget,
+    syllabus: activeSyllabus,
+  };
+
+  // Syllabus handler: Salva edital colado vinculado exclusivamente ao perfil ativo
   const handleSaveSyllabus = (targetId: string, syllabus: CustomSyllabus) => {
+    setStudentSyllabi((prev) => ({
+      ...prev,
+      [activeStudentId]: {
+        ...(prev[activeStudentId] || {}),
+        [targetId]: syllabus,
+      },
+    }));
+
+    // Atualiza também no target local para renderização reativa
     setTargets((prev) =>
       prev.map((t) => (t.id === targetId ? { ...t, syllabus } : t))
     );
     if (currentTarget.id === targetId) {
       setCurrentTarget((prev) => ({ ...prev, syllabus }));
     }
+
+    // Registra evento na trilha de auditoria do perfil do aluno
+    if (currentStudent) {
+      const auditItem: AuditEntry = {
+        id: `aud-syl-${Date.now()}`,
+        studentId: currentStudent.id,
+        studentName: currentStudent.name,
+        action: 'edital_colado',
+        description: `Edital verticalizado colado e vinculado exclusivamente ao perfil (${syllabus.title})`,
+        subject: 'Edital Verticalizado',
+        result: 'concluido',
+        timestamp: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        details: `${syllabus.subjects.length} disciplinas mapeadas com tópicos e pesos estratégicos.`,
+      };
+      setStudentAuditLogs((prev) => ({
+        ...prev,
+        [currentStudent.id]: [auditItem, ...(prev[currentStudent.id] || [])],
+      }));
+    }
   };
 
-  // Handle task toggling
+  // 2. Isolamento de Tarefas / Cronograma: cada aluno tem seu cronograma diário
+  const activeTasks = currentStudent
+    ? (studentTasks[currentStudent.id] || getInitialStudentTasks(currentStudent.id, currentStudent.targetExam))
+    : (studentTasks['usr-1'] || MOCK_DAILY_TASKS);
+
   const handleToggleTask = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
-    );
+    setStudentTasks((prev) => {
+      const list = prev[activeStudentId] || activeTasks;
+      const updated = list.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
+      return { ...prev, [activeStudentId]: updated };
+    });
   };
+
+  const handleUpdateTasks = (newTasks: DailyTask[]) => {
+    setStudentTasks((prev) => ({
+      ...prev,
+      [activeStudentId]: newTasks,
+    }));
+  };
+
+  // 3. Isolamento de Ciclo de Estudos: cada aluno tem seu ciclo semanal
+  const activeCycle = currentStudent
+    ? (studentCycles[currentStudent.id] || getInitialStudentCycle(currentStudent.id, currentStudent.targetExam))
+    : (studentCycles['usr-1'] || getInitialStudentCycle('usr-1', 'RFB 2026'));
+
+  const handleUpdateCycleDays = (newDays: CycleDay[]) => {
+    setStudentCycles((prev) => ({
+      ...prev,
+      [activeStudentId]: newDays,
+    }));
+    if (currentStudent) {
+      const auditItem: AuditEntry = {
+        id: `aud-cycle-${Date.now()}`,
+        studentId: currentStudent.id,
+        studentName: currentStudent.name,
+        action: 'ciclo_ajustado',
+        description: 'Ciclo semanal de estudos reconfigurado pelo aluno',
+        subject: 'Ciclo de Estudos',
+        result: 'concluido',
+        timestamp: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      };
+      setStudentAuditLogs((prev) => ({
+        ...prev,
+        [currentStudent.id]: [auditItem, ...(prev[currentStudent.id] || [])],
+      }));
+    }
+  };
+
+  // 4. Isolamento de Auditoria e Histórico
+  const activeAuditLogs = currentStudent
+    ? (studentAuditLogs[currentStudent.id] || getInitialStudentAuditLogs(currentStudent.id))
+    : (studentAuditLogs['usr-1'] || []);
 
   const handleNavigateToQuestions = (subjectFilter?: string) => {
     setSubjectFilterForQuestions(subjectFilter);
     setCurrentTab('questoes');
-  };
-
-  const handleNavigateToFlashcards = () => {
-    setCurrentTab('flashcards');
   };
 
   // Session checks: student vs admin isolation
@@ -651,12 +835,12 @@ export default function HomePage() {
                 )}
                 {currentTab === 'dashboard' && (
                   <DashboardView
-                    currentTarget={currentTarget}
-                    tasks={tasks}
+                    currentTarget={targetWithStudentSyllabus}
+                    tasks={activeTasks}
                     onToggleTask={handleToggleTask}
                     performances={activePerformances}
                     onNavigateToQuestions={handleNavigateToQuestions}
-                    onNavigateToFlashcards={handleNavigateToFlashcards}
+                    onNavigateToSimulados={() => setCurrentTab('simulados')}
                     onOpenPasteEdital={() => setIsPasteEditalOpen(true)}
                   />
                 )}
@@ -687,6 +871,23 @@ export default function HomePage() {
                         accuracyRate: newAcc,
                         lastActive: 'Agora',
                       });
+
+                      // Registrar na trilha cronológica de auditoria do aluno
+                      const auditEntry: AuditEntry = {
+                        id: `aud-ans-${Date.now()}`,
+                        studentId: currentStudent.id,
+                        studentName: currentStudent.name,
+                        action: 'resolucao_questao',
+                        description: `${isCorrect ? 'Acerto' : 'Erro'} em questão de ${subjectName} (${targetQ?.code || 'Q-Treino'})`,
+                        subject: subjectName,
+                        result: isCorrect ? 'correto' : 'incorreto',
+                        timestamp: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                        details: `Banca: ${targetQ?.board || 'FGV'} • Dificuldade: ${targetQ?.difficulty || 'Média'}.`,
+                      };
+                      setStudentAuditLogs((prev) => ({
+                        ...prev,
+                        [currentStudent.id]: [auditEntry, ...(prev[currentStudent.id] || [])],
+                      }));
 
                       // Atualizar métricas isoladas por matéria do aluno logado (um não afeta o outro)
                       setStudentPerformances((prev) => {
@@ -745,28 +946,22 @@ export default function HomePage() {
                   />
                 )}
 
-                {currentTab === 'flashcards' && (
-                  <FlashcardsSRSView 
-                    flashcards={MOCK_FLASHCARDS}
-                    onNavigateToMapas={() => setCurrentTab('mapas')}
-                    onNavigateToQuestions={handleNavigateToQuestions}
-                  />
-                )}
-
                 {currentTab === 'mapas' && (
                   <MapasMentaisView
-                    onNavigateToFlashcards={() => setCurrentTab('flashcards')}
                     onNavigateToQuestions={handleNavigateToQuestions}
                   />
                 )}
 
                 {currentTab === 'cronograma' && (
                   <StudyScheduleView
-                    tasks={tasks}
+                    tasks={activeTasks}
                     onToggleTask={handleToggleTask}
-                    currentTarget={currentTarget}
+                    currentTarget={targetWithStudentSyllabus}
                     onOpenPasteEdital={() => setIsPasteEditalOpen(true)}
-                    onUpdateTasks={setTasks}
+                    onUpdateTasks={handleUpdateTasks}
+                    cycleDays={activeCycle}
+                    onUpdateCycleDays={handleUpdateCycleDays}
+                    currentStudent={currentStudent}
                   />
                 )}
 
@@ -790,6 +985,8 @@ export default function HomePage() {
                   <PerformanceAuditView
                     performances={activePerformances}
                     onFocusSubject={(subject) => handleNavigateToQuestions(subject)}
+                    currentStudent={currentStudent}
+                    auditLogs={activeAuditLogs}
                   />
                 )}
 
@@ -828,13 +1025,13 @@ export default function HomePage() {
               <span>Questões</span>
             </button>
             <button
-              onClick={() => setCurrentTab('flashcards')}
+              onClick={() => setCurrentTab('simulados')}
               className={`flex flex-col items-center gap-1 p-1 text-[10px] font-bold ${
-                currentTab === 'flashcards' ? 'text-[#2563EB]' : 'text-[#64748B]'
+                currentTab === 'simulados' ? 'text-[#2563EB]' : 'text-[#64748B]'
               }`}
             >
-              <Layers className="w-4 h-4" />
-              <span>Cards</span>
+              <Timer className="w-4 h-4" />
+              <span>Simulados</span>
             </button>
             <button
               onClick={() => setCurrentTab('cronograma')}
@@ -921,8 +1118,9 @@ export default function HomePage() {
       <PasteEditalModal
         isOpen={isPasteEditalOpen}
         onClose={() => setIsPasteEditalOpen(false)}
-        currentTarget={currentTarget}
+        currentTarget={targetWithStudentSyllabus}
         onSaveSyllabus={handleSaveSyllabus}
+        currentStudent={currentStudent}
       />
 
       {/* Global Command Palette (⌘K) */}

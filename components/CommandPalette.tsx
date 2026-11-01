@@ -14,7 +14,8 @@ import {
   X,
   Network,
   Scale,
-  ShieldAlert
+  ShieldAlert,
+  Timer
 } from 'lucide-react';
 import { ExamTarget, ManagedUser } from '@/lib/types';
 import { NavigationTab } from './Sidebar';
@@ -60,7 +61,7 @@ export function CommandPalette({
 
   const baseActions = [
     { label: 'Ir para Banco de Questões', tab: 'questoes' as NavigationTab, icon: <BookOpen className="w-4 h-4 text-[#2563EB]" /> },
-    { label: 'Revisar Flashcards SRS (14 pendentes)', tab: 'flashcards' as NavigationTab, icon: <Layers className="w-4 h-4 text-purple-600" /> },
+    { label: 'Simulados & Provas Cronometradas', tab: 'simulados' as NavigationTab, icon: <Timer className="w-4 h-4 text-emerald-600" /> },
     { label: 'Mapas Mentais & Mnemônicos Visuais', tab: 'mapas' as NavigationTab, icon: <Network className="w-4 h-4 text-purple-600" /> },
     { label: 'Meus PDFs (Download & Organização)', tab: 'pdfs' as NavigationTab, icon: <FileText className="w-4 h-4 text-[#2563EB]" /> },
     { label: 'Visualizar Cronograma de Hoje', tab: 'cronograma' as NavigationTab, icon: <Calendar className="w-4 h-4 text-emerald-600" /> },

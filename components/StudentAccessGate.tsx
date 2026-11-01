@@ -27,6 +27,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { ManagedUser } from '@/lib/types';
+import { verifyAdminPassword, isAdminIdentifier } from '@/lib/authConfig';
 import { StudentPhotoCapture } from './StudentPhotoCapture';
 import { StudentCardBadge } from './StudentCardBadge';
 
@@ -129,14 +130,16 @@ export function StudentAccessGate({
 
     // Check if administrator credentials (completely discrete, transparent to outside users)
     const isAdminAccount =
-      emailTrim === 'admin' ||
-      emailTrim === 'superadmin' ||
-      emailTrim === 'admin@aprovacaototal.com' ||
-      emailTrim === 'pedagogico@aprovacaototal.com' ||
-      emailTrim === 'legongamer0306@gmail.com' ||
+      isAdminIdentifier(emailTrim) ||
       users.some((u) => u.email.toLowerCase() === emailTrim && u.role === 'admin');
 
     if (isAdminAccount) {
+      // VALIDAÇÃO RIGOROSA DA SENHA MASTER DO ADMINISTRADOR (admin03061983)
+      if (!verifyAdminPassword(passTrim)) {
+        setLoginError('Senha de administrador incorreta. Acesso restrito e negado.');
+        return;
+      }
+
       const isPedagogico = emailTrim.includes('pedagogico');
       const name = isPedagogico ? 'Gestor Pedagógico' : 'Super Administrador Geral';
       const role = isPedagogico ? 'gestor_conteudo' : 'super_admin';

@@ -66,8 +66,8 @@ export function AutoScheduleModal({
           },
           {
             id: `task-auto-${Date.now()}-3`,
-            title: 'Flashcards SRS de Erros Recorrentes (Fila Crítica)',
-            subject: 'Revisão Espaçada',
+            title: 'Revisão Periódica de Erros Recorrentes (Fila Crítica)',
+            subject: 'Revisão Ativa',
             type: 'revisao',
             durationMinutes: 25,
             completed: false,
@@ -129,8 +129,8 @@ export function AutoScheduleModal({
           },
           {
             id: `task-auto-${Date.now()}-4`,
-            title: 'Ciclo Ativo Flashcards SRS (Revisão Espaçada)',
-            subject: 'Revisão Espaçada',
+            title: 'Ciclo Ativo de Revisão (Caderno de Erros)',
+            subject: 'Revisão Ativa',
             type: 'revisao',
             durationMinutes: 20,
             completed: false,
@@ -143,10 +143,10 @@ export function AutoScheduleModal({
           { day: 'Seg', block: '70Q Tributário + Caderno de Erros', status: 'concluido', hours: 4.0 },
           { day: 'Ter', block: '60Q Constitucional + Lei Seca', status: 'concluido', hours: 4.0 },
           { day: 'Qua', block: '60Q Contabilidade Geral & CPCs', status: 'hoje', hours: 4.5 },
-          { day: 'Qui', block: '50Q Administrativo + Flashcards', status: 'pendente', hours: 4.0 },
+          { day: 'Qui', block: '50Q Administrativo + Jurisprudência', status: 'pendente', hours: 4.0 },
           { day: 'Sex', block: '50Q Auditoria + Legislação Federal', status: 'pendente', hours: 4.0 },
           { day: 'Sáb', block: 'Maratona 100Q Mistas Cronometrada', status: 'pendente', hours: 5.5 },
-          { day: 'Dom', block: 'Revisão SRS & Lei Seca', status: 'pendente', hours: 3.0 },
+          { day: 'Dom', block: 'Revisão Periódica & Lei Seca', status: 'pendente', hours: 3.0 },
         ];
       } else {
         // Ciclo Intercalado Clássico equilibrado
@@ -183,8 +183,8 @@ export function AutoScheduleModal({
           },
           {
             id: `task-auto-${Date.now()}-4`,
-            title: 'Bloco 4: Revisão SRS Flashcards Diários',
-            subject: 'Revisão Espaçada',
+            title: 'Bloco 4: Revisão Periódica e Resumos Diários',
+            subject: 'Revisão Ativa',
             type: 'revisao',
             durationMinutes: 20,
             completed: false,
@@ -196,7 +196,7 @@ export function AutoScheduleModal({
         generatedCycle = [
           { day: 'Seg', block: 'Tributário + CPC 47', status: 'concluido', hours: 4.2 },
           { day: 'Ter', block: 'Constitucional + Súmulas', status: 'concluido', hours: 4.5 },
-          { day: 'Qua', block: 'Administrativo + Revisão SRS', status: 'hoje', hours: 4.0 },
+          { day: 'Qua', block: 'Administrativo + Revisão Periódica', status: 'hoje', hours: 4.0 },
           { day: 'Qui', block: 'Auditoria Governamental', status: 'pendente', hours: 4.0 },
           { day: 'Sex', block: 'Legislação Aduaneira & Tributária', status: 'pendente', hours: 4.2 },
           { day: 'Sáb', block: 'Simulado Geral 70Q com Cronômetro', status: 'pendente', hours: 5.0 },

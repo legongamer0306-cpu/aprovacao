@@ -1,0 +1,6 @@
+{
+  "summary":  "Plano revisado com os 3 ajustes do usuário: (1) não recriar índices já existentes com nome idx_* das 7 primeiras tabelas, criando índices apenas para as 6 tabelas novas; (2) incluir ALTER TABLE users ALTER COLUMN password TYPE TEXT; (3) geração do meta/ e _journal.json pelo drizzle-kit preservando o histórico anterior.",
+  "updatedAt":  "2026-11-01T14:59:41.330661362Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

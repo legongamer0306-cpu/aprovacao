@@ -59,6 +59,7 @@ export function QuestionBankView({
 
   // Modal for creating member questions
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+  const [savedToastMessage, setSavedToastMessage] = useState<string | null>(null);
 
   // Filter questions by Subgroup (Oficiais, IA, Membros), Subject and Difficulty
   const filteredQuestions = questions.filter((q) => {
@@ -145,6 +146,21 @@ export function QuestionBankView({
 
   return (
     <div className="space-y-4">
+      {savedToastMessage && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl flex items-center justify-between text-xs font-semibold animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{savedToastMessage}</span>
+          </div>
+          <button
+            onClick={() => setSavedToastMessage(null)}
+            className="text-emerald-700 hover:text-emerald-950 font-bold ml-2 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Subgroup Navigation Banner & Quick Actions */}
       <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
         {/* Subgroups: Todas, Oficiais, Geradas por IA, Criadas por Membros */}
@@ -666,6 +682,10 @@ export function QuestionBankView({
           onAddQuestion?.(newQ);
           setSelectedSubgroup('membros');
           setCurrentIndex(0);
+          setSavedToastMessage(`Questão ${newQ.code || ''} salva automaticamente no banco de dados e adicionada ao repositório permanente!`);
+          setTimeout(() => {
+            setSavedToastMessage(null);
+          }, 4500);
         }}
       />
     </div>

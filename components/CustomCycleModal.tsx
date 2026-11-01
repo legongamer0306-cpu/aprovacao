@@ -217,7 +217,7 @@ export function CustomCycleModal({
                     <option value="questoes">Resolução de Questões</option>
                     <option value="teoria">Teoria / Doutrina</option>
                     <option value="lei_seca">Leitura de Lei Seca</option>
-                    <option value="revisao">Revisão Espaçada / Flashcards</option>
+                    <option value="revisao">Revisão Periódica / Resumos</option>
                     <option value="simulado">Simulado Cronometrado</option>
                   </select>
                 </div>
