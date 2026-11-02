@@ -14,21 +14,31 @@ import {
   Scale, 
   Eye, 
   Award,
-  X
+  X,
+  Trophy,
+  Medal,
+  Users,
+  Sparkles
 } from 'lucide-react';
-import { MockExam, ExamQuestion } from '@/lib/types';
+import { MockExam, ExamQuestion, ManagedUser, MockExamRankingEntry } from '@/lib/types';
 
 interface ExamRunnerModalProps {
   isOpen: boolean;
   onClose: () => void;
   exam: MockExam;
-  onFinishExam: (examId: string, score: number, correctCount: number, timeSpentSec: number) => void;
+  currentStudent?: ManagedUser | null;
+  rankings?: MockExamRankingEntry[];
+  onRecordRankingEntry?: (entry: MockExamRankingEntry) => void;
+  onFinishExam: (examId: string, score: number, correctCount: number, timeSpentSec: number, pointsEarned?: number, totalPointsPossible?: number) => void;
 }
 
 export function ExamRunnerModal({
   isOpen,
   onClose,
   exam,
+  currentStudent,
+  rankings = [],
+  onRecordRankingEntry,
   onFinishExam,
 }: ExamRunnerModalProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -37,23 +47,52 @@ export function ExamRunnerModal({
   const [isFinished, setIsFinished] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [finalCorrectCount, setFinalCorrectCount] = useState(0);
+  const [finalPointsEarned, setFinalPointsEarned] = useState(0);
+  const [finalTotalPoints, setFinalTotalPoints] = useState(0);
   const [timeSpent, setTimeSpent] = useState(0);
+  const [localRankings, setLocalRankings] = useState<MockExamRankingEntry[]>(rankings);
 
   const handleFinish = React.useCallback(() => {
     let correct = 0;
+    let earnedPts = 0;
+    let totalPts = 0;
+
     exam.questions.forEach((q) => {
+      const qPts = q.points ?? 1;
+      totalPts += qPts;
       if (selectedAnswers[q.id] === q.correctOptionId) {
         correct++;
+        earnedPts += qPts;
       }
     });
 
-    const scorePct = Math.round((correct / exam.questions.length) * 100);
+    const scorePct = Math.round((correct / (exam.questions.length || 1)) * 100);
     setFinalScore(scorePct);
     setFinalCorrectCount(correct);
+    setFinalPointsEarned(earnedPts);
+    setFinalTotalPoints(totalPts);
     setIsFinished(true);
 
-    onFinishExam(exam.id, scorePct, correct, timeSpent);
-  }, [exam, selectedAnswers, timeSpent, onFinishExam]);
+    const rankingEntry: MockExamRankingEntry = {
+      id: `rank-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      mockExamId: exam.id,
+      mockExamTitle: exam.title,
+      studentId: currentStudent?.id || 'usr-1',
+      studentName: currentStudent?.name || 'Estudante Oficial',
+      studentAvatar: currentStudent?.avatarUrl || undefined,
+      correctAnswers: correct,
+      totalQuestions: exam.questions.length,
+      scorePercent: scorePct,
+      pointsEarned: earnedPts,
+      totalPointsPossible: totalPts,
+      completedAt: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      timeSpentSeconds: timeSpent,
+    };
+
+    setLocalRankings((prev) => [rankingEntry, ...prev]);
+    onRecordRankingEntry?.(rankingEntry);
+    onFinishExam(exam.id, scorePct, correct, timeSpent, earnedPts, totalPts);
+  }, [exam, selectedAnswers, timeSpent, onFinishExam, onRecordRankingEntry, currentStudent]);
 
   const handleFinishRef = React.useRef(handleFinish);
   useEffect(() => {
@@ -100,6 +139,21 @@ export function ExamRunnerModal({
 
   const answeredCount = Object.keys(selectedAnswers).length;
   const isTimeCritical = secondsRemaining < 600; // less than 10 mins
+
+  // Relevant rankings for this exam sorted strictly by highest number of correct answers
+  const relevantRankings = localRankings.filter(
+    (r) => r.mockExamId === exam.id || r.mockExamTitle === exam.title
+  );
+
+  const sortedExamRankings = [...relevantRankings].sort((a, b) => {
+    if (b.correctAnswers !== a.correctAnswers) {
+      return b.correctAnswers - a.correctAnswers; // 1º CRITÉRIO OBRIGATÓRIO: MAIOR NÚMERO DE ACERTOS
+    }
+    if (b.pointsEarned !== a.pointsEarned) {
+      return b.pointsEarned - a.pointsEarned; // 2º CRITÉRIO: PONTUAÇÃO OBTIDA
+    }
+    return a.timeSpentSeconds - b.timeSpentSeconds; // 3º CRITÉRIO: MENOR TEMPO
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
@@ -175,11 +229,102 @@ export function ExamRunnerModal({
                 {finalScore >= exam.cutoffRate ? 'APROVADO NA NOTA DE CORTE!' : 'SIMULADO CONCLUÍDO - VULNERABILIDADE DETECTADA'}
               </h2>
               <p className="text-xs md:text-sm font-medium opacity-90 max-w-lg mx-auto">
-                Você atingiu <strong className="tabular-nums">{finalScore}%</strong> de acerto ({finalCorrectCount} de {exam.questions.length} questões). A nota de corte prevista para este concurso era de {exam.cutoffRate}%.
+                Você atingiu <strong className="tabular-nums">{finalScore}%</strong> de aproveitamento ({finalCorrectCount} de {exam.questions.length} questões acertadas).
+                {finalTotalPoints > 0 && (
+                  <span className="block mt-1 font-bold text-xs">
+                    Pontuação Total Obtida: {finalPointsEarned} de {finalTotalPoints} pontos possíveis.
+                  </span>
+                )}
               </p>
               <div className="pt-2 flex items-center justify-center gap-4 text-xs font-bold font-mono">
                 <span>Tempo Utilizado: {formatTime(timeSpent)}</span>
-                <span>Média por Questão: ~{Math.round(timeSpent / exam.questions.length)}s</span>
+                <span>Média por Questão: ~{Math.round(timeSpent / (exam.questions.length || 1))}s</span>
+              </div>
+            </div>
+
+            {/* TABELA DE RANKING OFICIAL POR NÚMERO DE ACERTOS */}
+            <div className="bg-white border border-[#CBD5E1] rounded-2xl p-5 shadow-sm space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#F1F5F9]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-black">
+                    <Trophy className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-[#0F172A] flex items-center gap-2">
+                      <span>Ranking Oficial do Simulado</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                        Classificação por Maior Número de Acertos
+                      </span>
+                    </h3>
+                    <p className="text-xs text-[#64748B]">
+                      Seu resultado foi enviado para o ranking geral. Critério principal de classificação: maior total de acertos.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[#E2E8F0] text-[10px] font-black uppercase text-[#64748B] bg-slate-50">
+                      <th className="py-2.5 px-3">Posição</th>
+                      <th className="py-2.5 px-3">Estudante</th>
+                      <th className="py-2.5 px-3 text-center">Nº de Acertos</th>
+                      <th className="py-2.5 px-3 text-center">Pontuação</th>
+                      <th className="py-2.5 px-3 text-center">Tempo</th>
+                      <th className="py-2.5 px-3 text-right">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F1F5F9]">
+                    {sortedExamRankings.map((rank, index) => {
+                      const isMe = rank.studentId === (currentStudent?.id || 'usr-1') || rank.studentName === currentStudent?.name;
+                      const podiumMedal = index === 0 ? '🥇 1º' : index === 1 ? '🥈 2º' : index === 2 ? '🥉 3º' : `${index + 1}º`;
+
+                      return (
+                        <tr
+                          key={rank.id}
+                          className={`transition-colors ${
+                            isMe ? 'bg-amber-50/80 font-bold border-l-4 border-amber-500' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <td className="py-3 px-3 font-mono font-black text-xs text-slate-800">
+                            <span className={index < 3 ? 'text-sm' : ''}>{podiumMedal}</span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center text-[10px] font-bold overflow-hidden">
+                                {rank.studentAvatar ? (
+                                  <img src={rank.studentAvatar} alt={rank.studentName} className="w-full h-full object-cover" />
+                                ) : (
+                                  rank.studentName.slice(0, 2).toUpperCase()
+                                )}
+                              </div>
+                              <span className="text-[#0F172A] font-bold">
+                                {rank.studentName} {isMe && <span className="text-amber-700 font-black text-[10px]">(Você)</span>}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            <span className="text-emerald-700 font-black text-sm">{rank.correctAnswers}</span>
+                            <span className="text-slate-400 text-xs">/{rank.totalQuestions}</span>
+                            <span className="text-[10px] text-slate-500 block font-semibold">({rank.scorePercent}%)</span>
+                          </td>
+                          <td className="py-3 px-3 text-center font-bold text-[#0F172A]">
+                            <span className="text-indigo-700 font-extrabold">{rank.pointsEarned}</span>
+                            <span className="text-slate-400 text-xs">/{rank.totalPointsPossible} pts</span>
+                          </td>
+                          <td className="py-3 px-3 text-center font-mono text-slate-600 text-xs">
+                            {formatTime(rank.timeSpentSeconds)}
+                          </td>
+                          <td className="py-3 px-3 text-right text-[11px] text-slate-500">
+                            {rank.completedAt}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
 

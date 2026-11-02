@@ -55,6 +55,7 @@ import { PRESET_STUDENT_AVATARS } from '@/lib/mockData';
 import { verifyAdminPassword } from '@/lib/authConfig';
 import { StudentPhotoCapture } from './StudentPhotoCapture';
 import { StudentCardBadge } from './StudentCardBadge';
+import { SimuladoQuestionsEditorModal } from './SimuladoQuestionsEditorModal';
 
 interface AdminPortalViewProps {
   // Data
@@ -184,6 +185,7 @@ export function AdminPortalView({
   
   // 1. Simulado Modals
   const [editingSimulado, setEditingSimulado] = useState<MockExam | null>(null);
+  const [editingSimuladoQuestions, setEditingSimuladoQuestions] = useState<MockExam | null>(null);
   const [isNewSimuladoModalOpen, setIsNewSimuladoModalOpen] = useState(false);
   const [simuladoDeleteConfirmId, setSimuladoDeleteConfirmId] = useState<string | null>(null);
   const [simSearch, setSimSearch] = useState('');
@@ -1603,13 +1605,21 @@ export function AdminPortalView({
                   </div>
 
                   {/* Actions: Edit & Delete */}
-                  <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-[#F1F5F9]">
+                  <div className="flex flex-wrap items-center justify-end gap-2 mt-4 pt-3 border-t border-[#F1F5F9]">
+                    <button
+                      onClick={() => setEditingSimuladoQuestions(sim)}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold text-indigo-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Editar Questões ({sim.questions?.length || sim.totalQuestions})</span>
+                    </button>
+
                     <button
                       onClick={() => openEditSimulado(sim)}
                       className="px-3 py-1.5 rounded-lg border border-[#CBD5E1] hover:bg-slate-50 text-xs font-bold text-[#334155] flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Editar Simulado</span>
+                      <span>Editar Dados</span>
                     </button>
 
                     <button
@@ -3620,6 +3630,22 @@ export function AdminPortalView({
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL: ADMIN EDIT QUESTIONS OF SIMULADO */}
+      {editingSimuladoQuestions && (
+        <SimuladoQuestionsEditorModal
+          isOpen={!!editingSimuladoQuestions}
+          onClose={() => setEditingSimuladoQuestions(null)}
+          exam={editingSimuladoQuestions}
+          allAvailableQuestions={questions}
+          onSaveExam={(updated) => {
+            onUpdateSimulado(updated);
+            addLog(`Questões do simulado "${updated.title}" foram atualizadas pelo administrador.`, 'edit');
+            showToast(`Questões do simulado "${updated.title}" atualizadas com sucesso!`, 'success');
+            setEditingSimuladoQuestions(null);
+          }}
+        />
       )}
     </div>
   );

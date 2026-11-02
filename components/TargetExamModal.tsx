@@ -94,7 +94,8 @@ export function TargetExamModal({
   const confirmDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (targets.length <= 1) {
-      alert('Você precisa manter ao menos um foco alvo cadastrado.');
+      setEnrolledSuccessMsg('Você precisa manter ao menos um foco alvo cadastrado no sistema.');
+      setTimeout(() => setEnrolledSuccessMsg(null), 3500);
       return;
     }
     setTargetToDelete(id);
@@ -370,11 +371,7 @@ export function TargetExamModal({
                 return (
                   <div
                     key={exam.id}
-                    onClick={() => {
-                      onSelectTarget(exam);
-                      onClose();
-                    }}
-                    className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2.5 relative group ${
+                    className={`p-4 rounded-2xl border transition-all flex flex-col gap-2.5 relative group ${
                       isSelected
                         ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/30 shadow-xs'
                         : 'border-[#E2E8F0] hover:border-[#CBD5E1] bg-white hover:bg-[#F8FAFC]'
@@ -410,7 +407,7 @@ export function TargetExamModal({
                       </div>
 
                       {/* Right Action: Matriculado / Inscrever-se / Ativo */}
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         {isEnrolled ? (
                           <div className="flex items-center gap-1.5">
                             <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-emerald-600 text-white flex items-center gap-1 shadow-xs">
@@ -423,30 +420,57 @@ export function TargetExamModal({
                             ) : (
                               <button
                                 type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                                onClick={() => {
                                   onSelectTarget(exam);
                                   onClose();
                                 }}
-                                className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold hover:bg-blue-100 transition-colors cursor-pointer"
                               >
                                 Ativar Estudo
                               </button>
                             )}
                           </div>
                         ) : isOpen ? (
-                          <button
-                            type="button"
-                            onClick={(e) => handleEnrollClick(e, exam)}
-                            className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all transform hover:scale-102"
-                          >
-                            <GraduationCap className="w-3.5 h-3.5" />
-                            <span>Inscrever-se no Curso</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => handleEnrollClick(e, exam)}
+                              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all transform hover:scale-102"
+                            >
+                              <GraduationCap className="w-3.5 h-3.5" />
+                              <span>Inscrever-se no Curso</span>
+                            </button>
+                            {!isSelected && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onSelectTarget(exam);
+                                  onClose();
+                                }}
+                                className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                Focar
+                              </button>
+                            )}
+                          </div>
                         ) : (
-                          <span className="text-xs text-slate-400 font-bold">
-                            Encerrado
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-slate-400 font-bold">
+                              Encerrado
+                            </span>
+                            {!isSelected && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onSelectTarget(exam);
+                                  onClose();
+                                }}
+                                className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+                              >
+                                Focar
+                              </button>
+                            )}
+                          </div>
                         )}
 
                         {exam.isCustom && (

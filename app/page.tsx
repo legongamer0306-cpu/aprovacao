@@ -40,7 +40,8 @@ import {
   PDF_SUBJECT_CLASSES,
   MOCK_SIMULADOS,
   DEFAULT_LEGAL_ITEMS_DATA,
-  MOCK_MANAGED_USERS
+  MOCK_MANAGED_USERS,
+  MOCK_SIMULADO_RANKINGS
 } from '@/lib/mockData';
 import { 
   ExamTarget, 
@@ -54,7 +55,8 @@ import {
   SubjectPerformance,
   DailyTask,
   CycleDay,
-  AuditEntry
+  AuditEntry,
+  MockExamRankingEntry
 } from '@/lib/types';
 import { 
   LayoutDashboard, 
@@ -74,8 +76,36 @@ export default function HomePage() {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
   const [adminSubTab, setAdminSubTab] = useState<'dashboard' | 'cursos' | 'simulados' | 'sumulas' | 'usuarios' | 'questoes'>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [targets, setTargets] = useState<ExamTarget[]>(TARGET_EXAMS);
-  const [currentTarget, setCurrentTarget] = useState<ExamTarget>(TARGET_EXAMS[0]);
+  const [targets, setTargets] = useState<ExamTarget[]>(() => {
+    if (typeof window === 'undefined') return TARGET_EXAMS;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_courses_targets');
+      if (saved) {
+        const parsed: ExamTarget[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.error('Falha ao restaurar cursos persistidos:', err);
+    }
+    return TARGET_EXAMS;
+  });
+  const [currentTarget, setCurrentTarget] = useState<ExamTarget>(() => {
+    if (typeof window === 'undefined') return TARGET_EXAMS[0];
+    try {
+      const saved = localStorage.getItem('aprovacao_total_courses_targets');
+      if (saved) {
+        const parsed: ExamTarget[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed[0];
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return TARGET_EXAMS[0];
+  });
   const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
   const [isPasteEditalOpen, setIsPasteEditalOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -121,9 +151,56 @@ export default function HomePage() {
   // 5. Isolamento de Histórico de Auditoria por Aluno
   const [studentAuditLogs, setStudentAuditLogs] = useState<Record<string, AuditEntry[]>>(STUDENT_AUDIT_LOGS_MAP);
 
-  // Simulados State & Active Exam
-  const [simulados, setSimulados] = useState<MockExam[]>(MOCK_SIMULADOS);
+  // Simulados State & Active Exam (Persisted automatically to localStorage)
+  const [simulados, setSimulados] = useState<MockExam[]>(() => {
+    if (typeof window === 'undefined') return MOCK_SIMULADOS;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_simulados');
+      if (saved) {
+        const parsed: MockExam[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.error('Falha ao restaurar simulados persistidos:', err);
+    }
+    return MOCK_SIMULADOS;
+  });
   const [activeRunningExam, setActiveRunningExam] = useState<MockExam | null>(null);
+
+  // Ranking de Simulados (Persisted automatically to localStorage)
+  const [mockRankings, setMockRankings] = useState<MockExamRankingEntry[]>(() => {
+    if (typeof window === 'undefined') return MOCK_SIMULADO_RANKINGS;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_mock_rankings');
+      if (saved) {
+        const parsed: MockExamRankingEntry[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.error('Falha ao restaurar rankings persistidos:', err);
+    }
+    return MOCK_SIMULADO_RANKINGS;
+  });
+
+  const handleRecordRankingEntry = (newEntry: MockExamRankingEntry) => {
+    setMockRankings((prev) => {
+      const targetId = newEntry.examId || newEntry.mockExamId;
+      const filtered = prev.filter(
+        (r) => !((r.examId || r.mockExamId) === targetId && r.studentId === newEntry.studentId)
+      );
+      const updated = [newEntry, ...filtered];
+      try {
+        localStorage.setItem('aprovacao_total_mock_rankings', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Erro ao salvar ranking no localStorage:', err);
+      }
+      return updated;
+    });
+  };
 
   // Legal Items State (Súmulas, Lei Seca, CNJ, Repercussão Geral)
   const [legalItems, setLegalItems] = useState<LegalItem[]>(DEFAULT_LEGAL_ITEMS_DATA);
@@ -189,17 +266,45 @@ export default function HomePage() {
     });
   };
 
-  // Simulado Handlers
+  // Simulado Handlers (Persisted to localStorage)
   const handleUpdateSimulado = (updated: MockExam) => {
-    setSimulados((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    setSimulados((prev) => {
+      const updatedList = prev.map((s) => (s.id === updated.id ? updated : s));
+      try {
+        localStorage.setItem('aprovacao_total_simulados', JSON.stringify(updatedList));
+      } catch (err) {
+        console.error('Erro ao salvar simulados no localStorage:', err);
+      }
+      return updatedList;
+    });
   };
 
   const handleDeleteSimulado = (simId: string) => {
-    setSimulados((prev) => prev.filter((s) => s.id !== simId));
+    setSimulados((prev) => {
+      const updatedList = prev.filter((s) => s.id !== simId);
+      try {
+        localStorage.setItem('aprovacao_total_simulados', JSON.stringify(updatedList));
+      } catch (err) {
+        console.error('Erro ao salvar simulados no localStorage:', err);
+      }
+      return updatedList;
+    });
   };
 
   const handleCreateSimulado = (newSim: MockExam) => {
-    setSimulados((prev) => [newSim, ...prev]);
+    if (!isAdminLoggedIn) {
+      console.warn('Apenas administradores possuem permissão para criar novos simulados.');
+      return;
+    }
+    setSimulados((prev) => {
+      const updatedList = [newSim, ...prev];
+      try {
+        localStorage.setItem('aprovacao_total_simulados', JSON.stringify(updatedList));
+      } catch (err) {
+        console.error('Erro ao salvar simulados no localStorage:', err);
+      }
+      return updatedList;
+    });
   };
 
   // Legal Items Handlers
@@ -400,13 +505,29 @@ export default function HomePage() {
     setCurrentTab('dashboard');
   };
 
-  // Course / Exam Target Management Handlers
+  // Course / Exam Target Management Handlers (Persisted to localStorage)
+  const saveTargetsToStorage = (updated: ExamTarget[]) => {
+    try {
+      localStorage.setItem('aprovacao_total_courses_targets', JSON.stringify(updated));
+    } catch (err) {
+      console.error('Erro ao salvar cursos no localStorage:', err);
+    }
+  };
+
   const handleCreateCourse = (newCourse: ExamTarget) => {
-    setTargets((prev) => [newCourse, ...prev]);
+    setTargets((prev) => {
+      const updated = [newCourse, ...prev];
+      saveTargetsToStorage(updated);
+      return updated;
+    });
   };
 
   const handleUpdateCourse = (updatedCourse: ExamTarget) => {
-    setTargets((prev) => prev.map((t) => (t.id === updatedCourse.id ? updatedCourse : t)));
+    setTargets((prev) => {
+      const updated = prev.map((t) => (t.id === updatedCourse.id ? updatedCourse : t));
+      saveTargetsToStorage(updated);
+      return updated;
+    });
     if (currentTarget.id === updatedCourse.id) {
       setCurrentTarget(updatedCourse);
     }
@@ -415,6 +536,7 @@ export default function HomePage() {
   const handleDeleteCourse = (courseId: string) => {
     setTargets((prev) => {
       const filtered = prev.filter((t) => t.id !== courseId);
+      saveTargetsToStorage(filtered);
       if (currentTarget.id === courseId && filtered.length > 0) {
         setCurrentTarget(filtered[0]);
       }
@@ -423,18 +545,20 @@ export default function HomePage() {
   };
 
   const handleToggleCourseEnrollment = (courseId: string) => {
-    setTargets((prev) =>
-      prev.map((t) =>
+    setTargets((prev) => {
+      const updated = prev.map((t) =>
         t.id === courseId
           ? { ...t, isOpenForEnrollment: !(t.isOpenForEnrollment !== false) }
           : t
-      )
-    );
+      );
+      saveTargetsToStorage(updated);
+      return updated;
+    });
   };
 
   const handleEnrollStudentInCourse = (courseId: string, studentId: string) => {
-    setTargets((prev) =>
-      prev.map((t) => {
+    setTargets((prev) => {
+      const updated = prev.map((t) => {
         if (t.id !== courseId) return t;
         const currentList = t.enrolledStudentIds || [];
         if (currentList.includes(studentId)) return t;
@@ -444,13 +568,24 @@ export default function HomePage() {
           enrolledStudentIds: newList,
           enrolledStudentsCount: (t.enrolledStudentsCount || 0) + 1,
         };
-      })
-    );
+      });
+      saveTargetsToStorage(updated);
+      return updated;
+    });
+
+    // Also update student's targetExam in users state
+    setUsers((prev) => {
+      const targetCourse = targets.find((t) => t.id === courseId);
+      if (!targetCourse) return prev;
+      return prev.map((u) =>
+        u.id === studentId ? { ...u, targetExam: targetCourse.name } : u
+      );
+    });
   };
 
   const handleUnenrollStudentFromCourse = (courseId: string, studentId: string) => {
-    setTargets((prev) =>
-      prev.map((t) => {
+    setTargets((prev) => {
+      const updated = prev.map((t) => {
         if (t.id !== courseId) return t;
         const currentList = t.enrolledStudentIds || [];
         const newList = currentList.filter((id) => id !== studentId);
@@ -459,8 +594,10 @@ export default function HomePage() {
           enrolledStudentIds: newList,
           enrolledStudentsCount: Math.max(0, (t.enrolledStudentsCount || 1) - 1),
         };
-      })
-    );
+      });
+      saveTargetsToStorage(updated);
+      return updated;
+    });
   };
 
   const handleStudentSelfEnroll = (courseId: string) => {
@@ -474,6 +611,31 @@ export default function HomePage() {
         targetExam: targetCourse.name,
       });
     }
+  };
+
+  // Admin user creation: does NOT log out the administrator or reset admin session!
+  const handleAdminCreateUser = (newUser: ManagedUser) => {
+    setUsers((prev) => [newUser, ...prev]);
+    setStudentPerformances((prev) => ({
+      ...prev,
+      [newUser.id]: getInitialStudentPerformance(newUser.id, newUser.targetExam),
+    }));
+    setStudentTasks((prev) => ({
+      ...prev,
+      [newUser.id]: getInitialStudentTasks(newUser.id, newUser.targetExam),
+    }));
+    setStudentCycles((prev) => ({
+      ...prev,
+      [newUser.id]: getInitialStudentCycle(newUser.id, newUser.targetExam),
+    }));
+    setStudentAuditLogs((prev) => ({
+      ...prev,
+      [newUser.id]: getInitialStudentAuditLogs(newUser.id),
+    }));
+    setStudentSyllabi((prev) => ({
+      ...prev,
+      [newUser.id]: getInitialStudentSyllabi(newUser.id),
+    }));
   };
 
   // PDF Management State
@@ -512,15 +674,20 @@ export default function HomePage() {
     }
   };
 
-  // Target handlers: Add & Delete
+  // Target handlers: Add & Delete (Persisted in localStorage)
   const handleAddTarget = (newTarget: ExamTarget) => {
-    setTargets((prev) => [newTarget, ...prev]);
+    setTargets((prev) => {
+      const updated = [newTarget, ...prev];
+      saveTargetsToStorage(updated);
+      return updated;
+    });
     setCurrentTarget(newTarget);
   };
 
   const handleDeleteTarget = (targetId: string) => {
     setTargets((prev) => {
       const filtered = prev.filter((t) => t.id !== targetId);
+      saveTargetsToStorage(filtered);
       if (currentTarget.id === targetId && filtered.length > 0) {
         setCurrentTarget(filtered[0]);
       }
@@ -639,7 +806,7 @@ export default function HomePage() {
 
   // Session checks: student vs admin isolation
   const isStudentLoggedIn = Boolean(currentStudent && currentStudent.status === 'ativo');
-  const isAdminLoggedIn = Boolean(adminSession.isAuthenticated && !currentStudent);
+  const isAdminLoggedIn = Boolean(adminSession.isAuthenticated);
   const isUserLoggedIn = Boolean(isStudentLoggedIn || isAdminLoggedIn);
   const pendingApprovalsCount = users.filter((u) => u.status === 'pendente_aprovacao').length;
 
@@ -788,7 +955,7 @@ export default function HomePage() {
                 onCreateLegalItem={handleCreateLegalItem}
                 onDeleteUser={handleDeleteUser}
                 onToggleRestrictUser={handleToggleRestrictUser}
-                onCreateUser={handleRegisterStudent}
+                onCreateUser={handleAdminCreateUser}
                 onUpdateUser={handleUpdateStudent}
                 onApproveUser={handleApproveUser}
                 onRejectUser={handleRejectUser}
@@ -943,6 +1110,11 @@ export default function HomePage() {
                     simulados={simulados}
                     onStartExam={(exam) => setActiveRunningExam(exam)}
                     onCreateCustomSimulado={handleCreateSimulado}
+                    isAdmin={isAdminLoggedIn}
+                    onUpdateSimulado={handleUpdateSimulado}
+                    allQuestions={questions}
+                    rankings={mockRankings}
+                    currentStudent={currentStudent}
                   />
                 )}
 
@@ -1079,9 +1251,12 @@ export default function HomePage() {
           isOpen={!!activeRunningExam}
           onClose={() => setActiveRunningExam(null)}
           exam={activeRunningExam}
+          currentStudent={currentStudent}
+          rankings={mockRankings}
+          onRecordRankingEntry={handleRecordRankingEntry}
           onFinishExam={(examId, score, correctCount, timeSpentSec) => {
-            setSimulados((prev) =>
-              prev.map((s) =>
+            setSimulados((prev) => {
+              const updated = prev.map((s) =>
                 s.id === examId
                   ? {
                       ...s,
@@ -1093,8 +1268,14 @@ export default function HomePage() {
                       submittedAt: 'Hoje',
                     }
                   : s
-              )
-            );
+              );
+              try {
+                localStorage.setItem('aprovacao_total_simulados', JSON.stringify(updated));
+              } catch (e) {
+                console.error('Erro ao persistir simulados:', e);
+              }
+              return updated;
+            });
             setActiveRunningExam(null);
           }}
         />

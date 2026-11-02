@@ -88,7 +88,8 @@ export interface ExamQuestion {
   correctOptionId: string;
   legalBasis?: string; // Jurisprudência / Artigo de Lei
   tags: string[];
-  origin?: 'oficial' | 'ia' | 'membros';
+  points?: number; // Valor / pontuação atribuída no simulado (ex: 2 pontos, 3 pontos)
+  origin?: 'oficial' | 'membros' | 'ia';
   author?: {
     name: string;
     avatar?: string;
@@ -162,6 +163,8 @@ export interface MockExam {
   completed?: boolean;
   score?: number; // e.g. 84%
   correctAnswers?: number;
+  totalPoints?: number; // Pontuação máxima do simulado (soma dos pesos das questões)
+  pointsEarned?: number; // Pontos obtidos pelo aluno com base nos pesos das questões acertadas
   userTimeSpentSeconds?: number;
   submittedAt?: string;
   status: 'disponivel' | 'em_andamento' | 'concluido';
@@ -248,3 +251,21 @@ export interface AdminSession {
   loginTime?: string;
 }
 
+export interface MockExamRankingEntry {
+  id: string;
+  mockExamId?: string;
+  mockExamTitle?: string;
+  examId?: string;
+  examTitle?: string;
+  studentId: string;
+  studentName: string;
+  studentAvatar?: string;
+  correctAnswers: number;
+  totalQuestions: number;
+  scorePercent?: number;
+  percentage?: number;
+  pointsEarned: number;
+  totalPointsPossible: number;
+  completedAt: string;
+  timeSpentSeconds: number;
+}

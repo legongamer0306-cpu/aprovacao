@@ -25,8 +25,6 @@ import {
   CreditCard,
   Phone,
   FileCheck2,
-  Search,
-  Check,
   Clock
 } from 'lucide-react';
 import { ManagedUser } from '@/lib/types';
@@ -68,13 +66,12 @@ export function StudentAreaModal({
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [loginSearchQuery, setLoginSearchQuery] = useState('');
 
   // Register form state
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
-  const [regTarget, setRegTarget] = useState('OAB 43º Exame Unificado');
+  const [regTarget] = useState('Geral');
   const [regPassword, setRegPassword] = useState('');
   const [regAvatar, setRegAvatar] = useState<string>('https://picsum.photos/seed/student-gabriela/240/240');
   const [regDocumentPhoto, setRegDocumentPhoto] = useState<string>('');
@@ -622,42 +619,20 @@ export function StudentAreaModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Target Exam Selection */}
-                <div>
-                  <label className="block text-xs font-bold text-[#334155] mb-1">
-                    Concurso ou Exame Alvo
-                  </label>
-                  <select
-                    value={regTarget}
-                    onChange={(e) => setRegTarget(e.target.value)}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#CBD5E1] bg-white focus:border-[#2563EB] outline-none"
-                  >
-                    <option value="OAB 43º Exame Unificado">OAB 43º Exame Unificado</option>
-                    <option value="RFB 2026 (Auditor-Fiscal)">RFB 2026 (Auditor-Fiscal)</option>
-                    <option value="Magistratura Estadual">Magistratura Estadual</option>
-                    <option value="Ministério Público Federal">Ministério Público Federal</option>
-                    <option value="TCU 2026 (Auditor Federal)">TCU 2026 (Auditor Federal)</option>
-                    <option value="Polícia Federal (Agente)">Polícia Federal (Agente)</option>
-                    <option value="Diplomacia CACD">Diplomacia CACD</option>
-                  </select>
-                </div>
-
-                {/* Phone / WhatsApp */}
-                <div>
-                  <label className="block text-xs font-bold text-[#334155] mb-1">
-                    Telefone / WhatsApp (Opcional)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="tel"
-                      value={regPhone}
-                      onChange={(e) => setRegPhone(e.target.value)}
-                      placeholder="(11) 99876-5432"
-                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#CBD5E1] focus:border-[#2563EB] outline-none pl-9"
-                    />
-                    <Phone className="w-4 h-4 text-[#94A3B8] absolute left-3 top-3" />
-                  </div>
+              {/* Phone / WhatsApp */}
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">
+                  Telefone / WhatsApp (Opcional)
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    placeholder="(11) 99876-5432"
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#CBD5E1] focus:border-[#2563EB] outline-none pl-9"
+                  />
+                  <Phone className="w-4 h-4 text-[#94A3B8] absolute left-3 top-3" />
                 </div>
               </div>
 
@@ -755,109 +730,16 @@ export function StudentAreaModal({
                 </button>
               </form>
 
-              {/* DEMO STUDENT PROFILES (SHOWING PHOTOS) */}
-              <div className="pt-4 border-t border-[#E2E8F0] space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">
-                    Ou Selecione um Aluno Cadastrado (Com Foto)
-                  </span>
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-2.5 top-2" />
-                    <input
-                      type="text"
-                      placeholder="Filtrar por nome..."
-                      value={loginSearchQuery}
-                      onChange={(e) => setLoginSearchQuery(e.target.value)}
-                      className="text-xs pl-7 pr-2.5 py-1 rounded-lg border border-[#CBD5E1] outline-none w-44"
-                    />
+              {/* Account Security Policy Notice */}
+              <div className="pt-4 border-t border-[#E2E8F0]">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-3">
+                  <ShieldAlert className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                  <div className="text-xs text-[#475569] space-y-1">
+                    <p className="font-bold text-[#0F172A]">Segurança & Sigilo Individual</p>
+                    <p className="text-[11px] leading-relaxed">
+                      Para alternar ou entrar na conta de um aluno, informe obrigatoriamente o e-mail e a senha cadastrada daquele estudante. A troca rápida ou acesso não autenticado a contas de terceiros está desabilitada para proteção dos dados e histórico de estudos.
+                    </p>
                   </div>
-                </div>
-
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                  {studentList
-                    .filter((st) => {
-                      if (!loginSearchQuery) return true;
-                      return (
-                        st.name.toLowerCase().includes(loginSearchQuery.toLowerCase()) ||
-                        st.email.toLowerCase().includes(loginSearchQuery.toLowerCase()) ||
-                        st.targetExam.toLowerCase().includes(loginSearchQuery.toLowerCase())
-                      );
-                    })
-                    .map((st) => {
-                      const isSelected = currentStudent?.id === st.id;
-                      return (
-                        <div
-                          key={st.id}
-                          onClick={() => {
-                            onSelectStudent(st);
-                            setActiveTab('perfil');
-                          }}
-                          className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                            isSelected
-                              ? 'border-[#2563EB] bg-blue-50/60 shadow-xs ring-1 ring-[#2563EB]'
-                              : 'border-[#E2E8F0] hover:border-blue-300 hover:bg-[#F8FAFC]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            {/* Student Photo */}
-                            <div className="w-10 h-10 rounded-xl bg-[#0F172A] text-white flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[#CBD5E1] shadow-2xs">
-                              {st.avatarUrl ? (
-                                <img 
-                                  src={st.avatarUrl} 
-                                  alt={st.name} 
-                                  className="w-full h-full object-cover"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                st.name.slice(0, 2).toUpperCase()
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs font-bold text-[#0F172A] truncate">
-                                  {st.name}
-                                </span>
-                                {st.status === 'ativo' && (
-                                  <span className="text-[9px] px-1.5 py-0.2 bg-emerald-100 text-emerald-800 font-bold rounded flex items-center gap-0.5">
-                                    <Check className="w-2.5 h-2.5 text-emerald-600" />
-                                    Aprovado
-                                  </span>
-                                )}
-                                {st.status === 'pendente_aprovacao' && (
-                                  <span className="text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded flex items-center gap-0.5">
-                                    <Clock className="w-2.5 h-2.5 text-amber-600" />
-                                    Aguardando Admin
-                                  </span>
-                                )}
-                                {st.status === 'restrito' && (
-                                  <span className="text-[9px] px-1 py-0.2 bg-rose-100 text-rose-700 font-bold rounded">
-                                    Restrito
-                                  </span>
-                                )}
-                                {st.documentPhotoUrl && (
-                                  <span className="text-[9px] px-1 py-0.2 bg-blue-100 text-blue-700 font-bold rounded flex items-center gap-0.5">
-                                    <Check className="w-2.5 h-2.5" />
-                                    Doc
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-[#64748B] truncate">
-                                {st.targetExam} • {st.email}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[11px] font-bold text-emerald-600 tabular-nums">
-                              {st.accuracyRate}%
-                            </span>
-                            <span className="text-xs text-[#2563EB] font-bold">
-                              {isSelected ? '✓ Conectado' : 'Entrar →'}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
                 </div>
               </div>
             </div>

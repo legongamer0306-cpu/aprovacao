@@ -27,7 +27,7 @@ import {
 import { ExamQuestion } from '@/lib/types';
 import { MemberQuestionModal } from '@/components/MemberQuestionModal';
 
-export type QuestionOriginSubgroup = 'all' | 'oficial' | 'ia' | 'membros';
+export type QuestionOriginSubgroup = 'all' | 'oficial' | 'membros';
 
 interface QuestionBankViewProps {
   questions: ExamQuestion[];
@@ -61,12 +61,11 @@ export function QuestionBankView({
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [savedToastMessage, setSavedToastMessage] = useState<string | null>(null);
 
-  // Filter questions by Subgroup (Oficiais, IA, Membros), Subject and Difficulty
+  // Filter questions by Subgroup (Oficiais, Membros), Subject and Difficulty
   const filteredQuestions = questions.filter((q) => {
     // Subgroup filter
-    if (selectedSubgroup === 'ia' && q.origin !== 'ia') return false;
     if (selectedSubgroup === 'membros' && q.origin !== 'membros') return false;
-    if (selectedSubgroup === 'oficial' && q.origin && q.origin !== 'oficial') return false;
+    if (selectedSubgroup === 'oficial' && q.origin === 'membros') return false;
 
     // Subject filter
     if (selectedSubject !== 'all' && !q.subject.toLowerCase().includes(selectedSubject.toLowerCase())) {
@@ -141,7 +140,6 @@ export function QuestionBankView({
   // Counts for subgroups
   const totalCount = questions.length;
   const officialCount = questions.filter(q => !q.origin || q.origin === 'oficial').length;
-  const aiCount = questions.filter(q => q.origin === 'ia').length;
   const memberCount = questions.filter(q => q.origin === 'membros').length;
 
   return (
@@ -163,7 +161,7 @@ export function QuestionBankView({
 
       {/* Subgroup Navigation Banner & Quick Actions */}
       <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        {/* Subgroups: Todas, Oficiais, Geradas por IA, Criadas por Membros */}
+        {/* Subgroups: Todas, Oficiais, Criadas por Membros */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
           <button
             onClick={() => {
@@ -201,27 +199,6 @@ export function QuestionBankView({
               selectedSubgroup === 'oficial' ? 'bg-white/20 text-white' : 'bg-[#E2E8F0] text-[#475569]'
             }`}>
               {officialCount}
-            </span>
-          </button>
-
-          {/* Subgrupo: Questões Geradas por IA */}
-          <button
-            onClick={() => {
-              setSelectedSubgroup('ia');
-              setCurrentIndex(0);
-            }}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5 ${
-              selectedSubgroup === 'ia'
-                ? 'bg-gradient-to-r from-purple-700 to-blue-600 text-white shadow-2xs ring-1 ring-purple-400'
-                : 'bg-[#FAF5FF] border border-purple-200 text-purple-700 hover:bg-purple-100/60'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Questões Geradas por IA</span>
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums font-bold ${
-              selectedSubgroup === 'ia' ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-800'
-            }`}>
-              {aiCount}
             </span>
           </button>
 
@@ -368,11 +345,6 @@ export function QuestionBankView({
               </span>
 
               {/* Subgroup Badge */}
-              {activeQuestion.origin === 'ia' && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-300 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-purple-600" /> Gerada por IA
-                </span>
-              )}
               {activeQuestion.origin === 'membros' && (
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
                   <Users className="w-3 h-3 text-emerald-600" /> Criada por Membro

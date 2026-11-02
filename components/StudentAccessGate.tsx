@@ -17,12 +17,10 @@ import {
   ShieldAlert,
   LogOut,
   Sparkles,
-  Search,
   KeyRound,
   FileCheck2,
   RefreshCw,
   Phone,
-  Check,
   Eye,
   AlertTriangle
 } from 'lucide-react';
@@ -59,7 +57,7 @@ export function StudentAccessGate({
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
-  const [regTarget, setRegTarget] = useState('OAB 43º Exame Unificado');
+  const [regTarget] = useState('Geral');
   const [regPassword, setRegPassword] = useState('');
   const [regAvatar, setRegAvatar] = useState('https://picsum.photos/seed/student-larissa/240/240');
   const [regDocPhoto, setRegDocPhoto] = useState('');
@@ -70,7 +68,6 @@ export function StudentAccessGate({
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [studentSearch, setStudentSearch] = useState('');
 
   const studentList = users.filter((u) => u.role !== 'admin');
 
@@ -542,38 +539,17 @@ export function StudentAccessGate({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-[#334155] mb-1">
-                    Concurso ou Exame Alvo *
-                  </label>
-                  <select
-                    value={regTarget}
-                    onChange={(e) => setRegTarget(e.target.value)}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#CBD5E1] bg-white focus:border-[#2563EB] outline-none"
-                  >
-                    <option value="OAB 43º Exame Unificado">OAB 43º Exame Unificado</option>
-                    <option value="RFB 2026 (Auditor-Fiscal)">RFB 2026 (Auditor-Fiscal)</option>
-                    <option value="Magistratura Estadual">Magistratura Estadual</option>
-                    <option value="Ministério Público Federal">Ministério Público Federal</option>
-                    <option value="TCU 2026 (Auditor Federal)">TCU 2026 (Auditor Federal)</option>
-                    <option value="Polícia Federal (Agente)">Polícia Federal (Agente)</option>
-                    <option value="Diplomacia CACD">Diplomacia CACD</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[#334155] mb-1">
-                    Telefone / WhatsApp (Opcional)
-                  </label>
-                  <input
-                    type="tel"
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
-                    placeholder="(11) 98452-1102"
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#CBD5E1] focus:border-[#2563EB] outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-[#334155] mb-1">
+                  Telefone / WhatsApp (Opcional)
+                </label>
+                <input
+                  type="tel"
+                  value={regPhone}
+                  onChange={(e) => setRegPhone(e.target.value)}
+                  placeholder="(11) 98452-1102"
+                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-[#CBD5E1] focus:border-[#2563EB] outline-none"
+                />
               </div>
 
               <div>
@@ -660,97 +636,16 @@ export function StudentAccessGate({
                 </button>
               </form>
 
-              {/* Select Existing Student with Status Badges */}
-              <div className="pt-4 border-t border-[#E2E8F0] space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-xs font-black uppercase tracking-wider text-[#0F172A]">
-                    Ou Selecione um Aluno para Teste:
-                  </span>
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-2.5 top-2" />
-                    <input
-                      type="text"
-                      placeholder="Buscar por nome..."
-                      value={studentSearch}
-                      onChange={(e) => setStudentSearch(e.target.value)}
-                      className="text-xs pl-7 pr-2.5 py-1 rounded-lg border border-[#CBD5E1] outline-none w-44"
-                    />
+              {/* Informative Security Policy Note */}
+              <div className="pt-4 border-t border-[#E2E8F0]">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-3">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="text-xs text-[#475569] space-y-1">
+                    <p className="font-bold text-[#0F172A]">Acesso Individual & Protegido</p>
+                    <p className="text-[11px] leading-relaxed">
+                      Cada aluno deve autenticar-se exclusivamente com seu e-mail e senha cadastrados. O acesso direto ou troca não autorizada entre contas de outros estudantes está permanentemente desativado por questões de segurança e sigilo de desempenho.
+                    </p>
                   </div>
-                </div>
-
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                  {studentList
-                    .filter((st) => {
-                      if (!studentSearch) return true;
-                      return (
-                        st.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-                        st.email.toLowerCase().includes(studentSearch.toLowerCase()) ||
-                        st.targetExam.toLowerCase().includes(studentSearch.toLowerCase())
-                      );
-                    })
-                    .map((st) => (
-                      <div
-                        key={st.id}
-                        onClick={() => onSelectStudent(st)}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                          st.status === 'ativo'
-                            ? 'border-emerald-200 bg-emerald-50/30 hover:border-emerald-400'
-                            : st.status === 'pendente_aprovacao'
-                            ? 'border-amber-200 bg-amber-50/40 hover:border-amber-400'
-                            : 'border-slate-200 bg-slate-50 hover:border-slate-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[#CBD5E1]">
-                            {st.avatarUrl ? (
-                              <img
-                                src={st.avatarUrl}
-                                alt={st.name}
-                                className="w-full h-full object-cover"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              st.name.slice(0, 2).toUpperCase()
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-bold text-[#0F172A] truncate">
-                                {st.name}
-                              </span>
-                              {st.status === 'ativo' && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-0.5">
-                                  <Check className="w-2.5 h-2.5 text-emerald-600" />
-                                  Aprovado
-                                </span>
-                              )}
-                              {st.status === 'pendente_aprovacao' && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-0.5">
-                                  <Clock className="w-2.5 h-2.5 text-amber-600" />
-                                  Aguardando Aprovação
-                                </span>
-                              )}
-                              {st.status === 'restrito' && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 border border-rose-300">
-                                  Restrito
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] text-[#64748B] truncate">
-                              {st.targetExam} • {st.email}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 text-right">
-                          <span className={`text-xs font-bold block ${
-                            st.status === 'ativo' ? 'text-emerald-700' : 'text-amber-700'
-                          }`}>
-                            {st.status === 'ativo' ? 'Acessar →' : 'Ver Status →'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
                 </div>
               </div>
             </div>

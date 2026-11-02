@@ -1,4 +1,4 @@
-import { ExamTarget, ExamQuestion, Flashcard, DailyTask, SubjectPerformance, MindMap, ManagedUser, LegalItem, StudyPDF, CycleDay, AuditEntry, CustomSyllabus } from './types';
+import { ExamTarget, ExamQuestion, Flashcard, DailyTask, SubjectPerformance, MindMap, ManagedUser, LegalItem, StudyPDF, CycleDay, AuditEntry, CustomSyllabus, MockExamRankingEntry } from './types';
 
 export const TARGET_EXAMS: ExamTarget[] = [
   {
@@ -295,15 +295,15 @@ export const MOCK_QUESTIONS: ExamQuestion[] = [
   },
   {
     id: 'q-ia-201',
-    code: 'IA-77312',
+    code: 'DOC-77312',
     year: 2026,
-    board: 'IA Aprovação Total',
-    agency: 'Simulado Preditivo Inédito',
+    board: 'Coordenação Pedagógica',
+    agency: 'Simulado Inédito Especial',
     role: 'Auditor-Fiscal da RFB',
     subject: 'Direito Tributário',
     topic: 'Reforma Tributária (EC 132/2023) - IBS e CBS',
     difficulty: 'Difícil',
-    origin: 'ia',
+    origin: 'oficial',
     statement: `Com o advento da Emenda Constitucional nº 132/2023 (Reforma Tributária sobre o Consumo), instituiu-se o Imposto sobre Bens e Serviços (IBS) e a Contribuição sobre Bens e Serviços (CBS), conformando um modelo de IVA Dual no ordenamento jurídico pátrio.\n\nConsiderando a conformação das imunidades e a não cumulatividade plena aplicável ao novo regime, assinale a opção correta acerca da incidência do IBS e CBS.`,
     options: [
       {
@@ -342,16 +342,16 @@ export const MOCK_QUESTIONS: ExamQuestion[] = [
     tags: ['EC 132/2023', 'Reforma Tributária', 'IBS e CBS', 'IVA Dual']
   },
   {
-    id: 'q-ia-202',
-    code: 'IA-77313',
+    id: 'q-doc-202',
+    code: 'DOC-77313',
     year: 2026,
-    board: 'IA Aprovação Total',
-    agency: 'Simulado FGV Preditivo',
+    board: 'Coordenação Pedagógica',
+    agency: 'Simulado FGV Oficial',
     role: 'Auditor Federal de Controle Externo',
     subject: 'Direito Constitucional',
     topic: 'Processo Legislativo - Medidas Provisórias e Emendas Constitucionais',
     difficulty: 'Média',
-    origin: 'ia',
+    origin: 'oficial',
     statement: `Suponha que durante a vigência de Estado de Defesa decretado em determinado estado da federação, o Congresso Nacional pretenda aprovar Emenda Constitucional que altere a repartição constitucional das receitas tributárias entre a União e os Municípios.\n\nÀ luz das limitações circunstanciais e materiais ao poder constituinte derivado reformador, assinale a opção correta.`,
     options: [
       {
@@ -1462,10 +1462,10 @@ export const MOCK_SIMULADOS = [
   },
   {
     id: 'sim-2',
-    title: 'Simulado Preditivo IA - Reforma Tributária & Jurisprudência',
-    code: 'SIM-IA-PRED-02',
+    title: 'Simulado Avançado - Reforma Tributária & Jurisprudência',
+    code: 'SIM-PRED-02',
     agency: 'Receita Federal / TCU',
-    board: 'IA Aprovação Total (Preditiva)',
+    board: 'Coordenação Pedagógica Aprovação Total',
     totalQuestions: 50,
     durationMinutes: 180,
     cutoffRate: 80.0,
@@ -2247,4 +2247,128 @@ export const DEFAULT_LEGAL_ITEMS_DATA: LegalItem[] = [
     relevance: 'Alta Incidência'
   }
 ];
+
+export const MOCK_SIMULADO_RANKINGS: MockExamRankingEntry[] = [
+  {
+    id: 'rnk-1',
+    examId: 'sim-1',
+    examTitle: 'Simulado Nacional Oficial RFB 2026 - Prova 1 (Objetiva)',
+    studentId: 'usr-4',
+    studentName: 'Juliana Beatriz Costa',
+    studentAvatar: 'https://picsum.photos/seed/student-juliana/240/240',
+    correctAnswers: 66,
+    totalQuestions: 70,
+    pointsEarned: 132,
+    totalPointsPossible: 140,
+    percentage: 94.3,
+    timeSpentSeconds: 10380,
+    completedAt: 'Hoje às 14:20'
+  },
+  {
+    id: 'rnk-2',
+    examId: 'sim-1',
+    examTitle: 'Simulado Nacional Oficial RFB 2026 - Prova 1 (Objetiva)',
+    studentId: 'usr-1',
+    studentName: 'Carlos Eduardo Fontes',
+    studentAvatar: 'https://picsum.photos/seed/student-carlos/240/240',
+    correctAnswers: 59,
+    totalQuestions: 70,
+    pointsEarned: 118,
+    totalPointsPossible: 140,
+    percentage: 84.3,
+    timeSpentSeconds: 12480,
+    completedAt: 'Ontem às 18:30'
+  },
+  {
+    id: 'rnk-3',
+    examId: 'sim-1',
+    examTitle: 'Simulado Nacional Oficial RFB 2026 - Prova 1 (Objetiva)',
+    studentId: 'usr-2',
+    studentName: 'Mariana Silveira Ramos',
+    studentAvatar: 'https://picsum.photos/seed/student-mariana/240/240',
+    correctAnswers: 54,
+    totalQuestions: 70,
+    pointsEarned: 108,
+    totalPointsPossible: 140,
+    percentage: 77.1,
+    timeSpentSeconds: 13100,
+    completedAt: '28/10/2026'
+  },
+  {
+    id: 'rnk-4',
+    examId: 'sim-1',
+    examTitle: 'Simulado Nacional Oficial RFB 2026 - Prova 1 (Objetiva)',
+    studentId: 'usr-7',
+    studentName: 'Lucas Ferreira Guimarães',
+    studentAvatar: 'https://picsum.photos/seed/student-lucas/240/240',
+    correctAnswers: 50,
+    totalQuestions: 70,
+    pointsEarned: 100,
+    totalPointsPossible: 140,
+    percentage: 71.4,
+    timeSpentSeconds: 12900,
+    completedAt: '27/10/2026'
+  },
+  {
+    id: 'rnk-5',
+    examId: 'sim-1',
+    examTitle: 'Simulado Nacional Oficial RFB 2026 - Prova 1 (Objetiva)',
+    studentId: 'usr-3',
+    studentName: 'Roberto Viana Mendonça',
+    studentAvatar: 'https://picsum.photos/seed/student-roberto/240/240',
+    correctAnswers: 42,
+    totalQuestions: 70,
+    pointsEarned: 84,
+    totalPointsPossible: 140,
+    percentage: 60.0,
+    timeSpentSeconds: 14100,
+    completedAt: '26/10/2026'
+  },
+  {
+    id: 'rnk-6',
+    examId: 'sim-3',
+    examTitle: 'Simulado 1ª Fase OAB 43º Exame Unificado (FGV)',
+    studentId: 'usr-2',
+    studentName: 'Mariana Silveira Ramos',
+    studentAvatar: 'https://picsum.photos/seed/student-mariana/240/240',
+    correctAnswers: 68,
+    totalQuestions: 80,
+    pointsEarned: 136,
+    totalPointsPossible: 160,
+    percentage: 85.0,
+    timeSpentSeconds: 14200,
+    completedAt: '29/10/2026'
+  },
+  {
+    id: 'rnk-7',
+    examId: 'sim-3',
+    examTitle: 'Simulado 1ª Fase OAB 43º Exame Unificado (FGV)',
+    studentId: 'usr-7',
+    studentName: 'Lucas Ferreira Guimarães',
+    studentAvatar: 'https://picsum.photos/seed/student-lucas/240/240',
+    correctAnswers: 61,
+    totalQuestions: 80,
+    pointsEarned: 122,
+    totalPointsPossible: 160,
+    percentage: 76.3,
+    timeSpentSeconds: 15400,
+    completedAt: '28/10/2026'
+  },
+  {
+    id: 'rnk-8',
+    examId: 'sim-3',
+    examTitle: 'Simulado 1ª Fase OAB 43º Exame Unificado (FGV)',
+    studentId: 'usr-1',
+    studentName: 'Carlos Eduardo Fontes',
+    studentAvatar: 'https://picsum.photos/seed/student-carlos/240/240',
+    correctAnswers: 58,
+    totalQuestions: 80,
+    pointsEarned: 116,
+    totalPointsPossible: 160,
+    percentage: 72.5,
+    timeSpentSeconds: 16100,
+    completedAt: '25/10/2026'
+  }
+];
+
 
