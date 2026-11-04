@@ -417,49 +417,6 @@ export function StudentAccessGate({
                   </div>
                 </div>
               )}
-
-              {/* Instant Test Approval Shortcut */}
-              <div className="pt-2 border-t border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <span className="text-[11px] text-amber-800">
-                  Precisa testar o ambiente de estudos agora mesmo?
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const approvedStudent: ManagedUser = {
-                      ...currentStudent,
-                      status: 'ativo',
-                    };
-                    try {
-                      const stored = localStorage.getItem('aprovacao_total_users');
-                      let list: ManagedUser[] = users;
-                      if (stored) {
-                        const parsed = JSON.parse(stored);
-                        if (Array.isArray(parsed)) list = parsed;
-                      }
-                      const updated = list.map((u) =>
-                        u.id === approvedStudent.id || u.email.toLowerCase() === approvedStudent.email.toLowerCase()
-                          ? approvedStudent
-                          : u
-                      );
-                      localStorage.setItem('aprovacao_total_users', JSON.stringify(updated));
-                    } catch {}
-
-                    setApprovalStatusMessage({
-                      type: 'approved',
-                      text: '⚡ Aprovação de teste ativada! Liberando acesso à plataforma...',
-                      time: new Date().toLocaleTimeString('pt-BR'),
-                    });
-                    setTimeout(() => {
-                      onSelectStudent(approvedStudent);
-                    }, 700);
-                  }}
-                  className="text-xs font-black text-emerald-700 hover:text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200/80 px-2.5 py-1.5 rounded-lg border border-emerald-300 transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Aprovar Imediatamente (Ambiente de Testes)</span>
-                </button>
-              </div>
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0]">

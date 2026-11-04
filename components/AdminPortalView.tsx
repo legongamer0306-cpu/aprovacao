@@ -345,7 +345,10 @@ export function AdminPortalView({
         enrolledStudentsCount: (editingCourse.enrolledStudentIds || []).length || editingCourse.enrolledStudentsCount || 0,
         syllabus: editingCourse.syllabus || {
           id: `syl-${editingCourse.id}`,
+          targetId: editingCourse.id,
           title: `Edital ${crsName.trim()}`,
+          pastedContent: '',
+          createdAt: new Date().toLocaleDateString('pt-BR'),
           subjects: [],
         },
       };
@@ -377,7 +380,10 @@ export function AdminPortalView({
         isCustom: false,
         syllabus: {
           id: `syl-${newCourseId}`,
+          targetId: newCourseId,
           title: `Edital ${crsName.trim()}`,
+          pastedContent: '',
+          createdAt: new Date().toLocaleDateString('pt-BR'),
           subjects: [],
         },
       };

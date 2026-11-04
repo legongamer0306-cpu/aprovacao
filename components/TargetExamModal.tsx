@@ -82,7 +82,10 @@ export function TargetExamModal({
       enrolledStudentsCount: 1,
       syllabus: {
         id: `syl-${targetId}`,
+        targetId,
         title: `Edital ${newName.trim()}`,
+        pastedContent: '',
+        createdAt: new Date().toLocaleDateString('pt-BR'),
         subjects: [],
       },
     };

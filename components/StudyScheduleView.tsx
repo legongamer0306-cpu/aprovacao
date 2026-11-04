@@ -14,7 +14,8 @@ import {
   RotateCcw,
   Target,
   FileText,
-  SlidersHorizontal
+  SlidersHorizontal,
+  CalendarCheck
 } from 'lucide-react';
 import { DailyTask, ExamTarget, CycleDay } from '@/lib/types';
 import { AutoScheduleModal } from '@/components/AutoScheduleModal';

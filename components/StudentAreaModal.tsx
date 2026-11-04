@@ -559,39 +559,6 @@ export function StudentAreaModal({
                     </div>
                   )}
 
-                  <div className="pt-2 border-t border-amber-200 flex items-center justify-between">
-                    <span className="text-[10px] text-amber-800">Deseja liberar o acesso de teste imediatamente?</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const approved: ManagedUser = { ...currentStudent, status: 'ativo' };
-                        try {
-                          const stored = localStorage.getItem('aprovacao_total_users');
-                          let list: ManagedUser[] = users;
-                          if (stored) {
-                            const parsed = JSON.parse(stored);
-                            if (Array.isArray(parsed)) list = parsed;
-                          }
-                          const updated = list.map((u) =>
-                            u.id === approved.id || u.email.toLowerCase() === approved.email.toLowerCase()
-                              ? approved
-                              : u
-                          );
-                          localStorage.setItem('aprovacao_total_users', JSON.stringify(updated));
-                        } catch {}
-                        onSelectStudent(approved);
-                        if (onUpdateStudent) onUpdateStudent(approved);
-                        setApprovalModalMessage({
-                          type: 'approved',
-                          text: '⚡ Acesso de teste ativado com sucesso!',
-                          time: new Date().toLocaleTimeString('pt-BR'),
-                        });
-                      }}
-                      className="text-xs font-black text-emerald-700 hover:text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-lg border border-emerald-300 transition-colors cursor-pointer"
-                    >
-                      Aprovar Imediatamente (Modo Teste)
-                    </button>
-                  </div>
                 </div>
               ) : currentStudent.status !== 'ativo' ? (
                 <div className="p-4 rounded-xl border border-rose-300 bg-rose-50/80 space-y-2">
