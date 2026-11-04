@@ -22,18 +22,23 @@ import {
   Users,
   BrainCircuit,
   Plus,
-  Trash2
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import { ExamQuestion } from '@/lib/types';
 import { MemberQuestionModal } from '@/components/MemberQuestionModal';
 
-export type QuestionOriginSubgroup = 'all' | 'oficial' | 'membros';
+export type QuestionOriginSubgroup = 'all' | 'oficial' | 'membros' | 'marcadas' | 'erros';
 
 interface QuestionBankViewProps {
   questions: ExamQuestion[];
   initialSubjectFilter?: string;
+  initialMode?: QuestionOriginSubgroup;
+  bookmarkedQuestionIds?: string[];
+  mistakesMap?: Record<string, { count: number; lastMissedAt: string }>;
   onBookmarkToggle?: (questionId: string) => void;
   onRecordAnswer?: (questionId: string, isCorrect: boolean) => void;
+  onRemoveMistake?: (questionId: string) => void;
   onAddQuestion?: (question: ExamQuestion) => void;
   onDeleteQuestion?: (questionId: string) => void;
 }
@@ -41,18 +46,21 @@ interface QuestionBankViewProps {
 export function QuestionBankView({
   questions,
   initialSubjectFilter,
+  initialMode,
+  bookmarkedQuestionIds = [],
+  mistakesMap = {},
   onBookmarkToggle,
   onRecordAnswer,
+  onRemoveMistake,
   onAddQuestion,
   onDeleteQuestion,
 }: QuestionBankViewProps) {
-  const [selectedSubgroup, setSelectedSubgroup] = useState<QuestionOriginSubgroup>('all');
+  const [selectedSubgroup, setSelectedSubgroup] = useState<QuestionOriginSubgroup>(initialMode || 'all');
   const [selectedSubject, setSelectedSubject] = useState<string>(initialSubjectFilter || 'all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [verifiedMap, setVerifiedMap] = useState<Record<string, boolean>>({});
-  const [bookmarkedMap, setBookmarkedMap] = useState<Record<string, boolean>>({});
   const [showExplanation, setShowExplanation] = useState<boolean>(false);
   const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
   const [eliminatedOptions, setEliminatedOptions] = useState<Record<string, boolean>>({});
@@ -61,11 +69,29 @@ export function QuestionBankView({
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [savedToastMessage, setSavedToastMessage] = useState<string | null>(null);
 
-  // Filter questions by Subgroup (Oficiais, Membros), Subject and Difficulty
-  const filteredQuestions = questions.filter((q) => {
+  // Sync state on prop changes without cascading useEffect re-renders (official React pattern)
+  const [prevInitialMode, setPrevInitialMode] = useState(initialMode);
+  if (initialMode !== prevInitialMode) {
+    setPrevInitialMode(initialMode);
+    setSelectedSubgroup(initialMode || 'all');
+    setCurrentIndex(0);
+    setShowExplanation(false);
+  }
+
+  const [prevSubjectFilter, setPrevSubjectFilter] = useState(initialSubjectFilter);
+  if (initialSubjectFilter !== prevSubjectFilter) {
+    setPrevSubjectFilter(initialSubjectFilter);
+    setSelectedSubject(initialSubjectFilter || 'all');
+    setCurrentIndex(0);
+  }
+
+  // Filter questions by Subgroup (Todas, Oficiais, Membros, Marcadas, Erros), Subject and Difficulty
+  let filteredQuestions = questions.filter((q) => {
     // Subgroup filter
     if (selectedSubgroup === 'membros' && q.origin !== 'membros') return false;
     if (selectedSubgroup === 'oficial' && q.origin === 'membros') return false;
+    if (selectedSubgroup === 'marcadas' && !bookmarkedQuestionIds.includes(q.id)) return false;
+    if (selectedSubgroup === 'erros' && !mistakesMap[q.id]) return false;
 
     // Subject filter
     if (selectedSubject !== 'all' && !q.subject.toLowerCase().includes(selectedSubject.toLowerCase())) {
@@ -78,15 +104,26 @@ export function QuestionBankView({
     return true;
   });
 
-  const activeQuestion = filteredQuestions[currentIndex] || questions[0];
+  // If Erros Frequentes, sort by mistake count descending
+  if (selectedSubgroup === 'erros') {
+    filteredQuestions = [...filteredQuestions].sort((a, b) => {
+      const countA = mistakesMap[a.id]?.count || 0;
+      const countB = mistakesMap[b.id]?.count || 0;
+      return countB - countA;
+    });
+  }
+
+  const activeQuestion = filteredQuestions[currentIndex] || filteredQuestions[0];
+  const isBookmarked = activeQuestion ? bookmarkedQuestionIds.includes(activeQuestion.id) : false;
+  const isMistake = activeQuestion ? Boolean(mistakesMap[activeQuestion.id]) : false;
 
   const handleSelectOption = (optionId: string) => {
-    if (verifiedMap[activeQuestion.id]) return; // locked once verified
+    if (!activeQuestion || verifiedMap[activeQuestion.id]) return; // locked once verified
     setSelectedAnswers((prev) => ({ ...prev, [activeQuestion.id]: optionId }));
   };
 
   const handleVerify = () => {
-    if (!selectedAnswers[activeQuestion.id]) return;
+    if (!activeQuestion || !selectedAnswers[activeQuestion.id]) return;
     const isCorrect = selectedAnswers[activeQuestion.id] === activeQuestion.correctOptionId;
     setVerifiedMap((prev) => ({ ...prev, [activeQuestion.id]: true }));
     setShowExplanation(true);
@@ -94,6 +131,7 @@ export function QuestionBankView({
   };
 
   const handleResetQuestion = () => {
+    if (!activeQuestion) return;
     setSelectedAnswers((prev) => {
       const copy = { ...prev };
       delete copy[activeQuestion.id];
@@ -109,11 +147,13 @@ export function QuestionBankView({
   };
 
   const toggleBookmark = () => {
-    setBookmarkedMap((prev) => ({
-      ...prev,
-      [activeQuestion.id]: !prev[activeQuestion.id],
-    }));
+    if (!activeQuestion) return;
     onBookmarkToggle?.(activeQuestion.id);
+    setSavedToastMessage(
+      isBookmarked
+        ? 'Questão removida das Questões Marcadas.'
+        : '⭐ Questão favoritada com sucesso! Acesse na aba Questões Marcadas.'
+    );
   };
 
   const toggleEliminate = (e: React.MouseEvent, optionId: string) => {
@@ -124,9 +164,9 @@ export function QuestionBankView({
     }));
   };
 
-  const isVerified = verifiedMap[activeQuestion.id];
-  const userChoice = selectedAnswers[activeQuestion.id];
-  const isCorrectChoice = userChoice === activeQuestion.correctOptionId;
+  const isVerified = activeQuestion ? verifiedMap[activeQuestion.id] : false;
+  const userChoice = activeQuestion ? selectedAnswers[activeQuestion.id] : undefined;
+  const isCorrectChoice = activeQuestion ? userChoice === activeQuestion.correctOptionId : false;
 
   // Extract unique subjects
   const subjects = ['all', ...Array.from(new Set(questions.map((q) => q.subject)))];
@@ -141,6 +181,8 @@ export function QuestionBankView({
   const totalCount = questions.length;
   const officialCount = questions.filter(q => !q.origin || q.origin === 'oficial').length;
   const memberCount = questions.filter(q => q.origin === 'membros').length;
+  const markedCount = questions.filter(q => bookmarkedQuestionIds.includes(q.id)).length;
+  const mistakesCount = questions.filter(q => Boolean(mistakesMap[q.id])).length;
 
   return (
     <div className="space-y-4">
@@ -161,14 +203,15 @@ export function QuestionBankView({
 
       {/* Subgroup Navigation Banner & Quick Actions */}
       <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        {/* Subgroups: Todas, Oficiais, Criadas por Membros */}
+        {/* Subgroups: Todas, Oficiais, Membros, Marcadas, Erros */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
           <button
             onClick={() => {
               setSelectedSubgroup('all');
               setCurrentIndex(0);
+              setShowExplanation(false);
             }}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
               selectedSubgroup === 'all'
                 ? 'bg-[#0F172A] text-white shadow-2xs'
                 : 'bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A]'
@@ -186,8 +229,9 @@ export function QuestionBankView({
             onClick={() => {
               setSelectedSubgroup('oficial');
               setCurrentIndex(0);
+              setShowExplanation(false);
             }}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
               selectedSubgroup === 'oficial'
                 ? 'bg-[#0F172A] text-white shadow-2xs'
                 : 'bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A]'
@@ -207,19 +251,64 @@ export function QuestionBankView({
             onClick={() => {
               setSelectedSubgroup('membros');
               setCurrentIndex(0);
+              setShowExplanation(false);
             }}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
               selectedSubgroup === 'membros'
                 ? 'bg-emerald-700 text-white shadow-2xs ring-1 ring-emerald-500'
                 : 'bg-[#ECFDF5] border border-emerald-200 text-emerald-800 hover:bg-emerald-100/60'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            <span>Questões Criadas por Membros</span>
+            <span>Questões de Membros</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums font-bold ${
               selectedSubgroup === 'membros' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-900'
             }`}>
               {memberCount}
+            </span>
+          </button>
+
+          {/* Subgrupo: Questões Marcadas */}
+          <button
+            onClick={() => {
+              setSelectedSubgroup('marcadas');
+              setCurrentIndex(0);
+              setShowExplanation(false);
+            }}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              selectedSubgroup === 'marcadas'
+                ? 'bg-amber-500 text-white shadow-2xs'
+                : 'bg-amber-50/80 border border-amber-200 text-amber-800 hover:bg-amber-100'
+            }`}
+          >
+            <Bookmark className={`w-3.5 h-3.5 ${selectedSubgroup === 'marcadas' ? 'fill-white' : 'fill-amber-500 text-amber-500'}`} />
+            <span>Questões Marcadas</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums font-bold ${
+              selectedSubgroup === 'marcadas' ? 'bg-white/25 text-white' : 'bg-amber-200 text-amber-900'
+            }`}>
+              {markedCount}
+            </span>
+          </button>
+
+          {/* Subgrupo: Erros Frequentes / Caderno de Erros */}
+          <button
+            onClick={() => {
+              setSelectedSubgroup('erros');
+              setCurrentIndex(0);
+              setShowExplanation(false);
+            }}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              selectedSubgroup === 'erros'
+                ? 'bg-rose-600 text-white shadow-2xs'
+                : 'bg-rose-50/80 border border-rose-200 text-rose-800 hover:bg-rose-100'
+            }`}
+          >
+            <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+            <span>Erros Frequentes</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums font-bold ${
+              selectedSubgroup === 'erros' ? 'bg-white/25 text-white' : 'bg-rose-200 text-rose-900'
+            }`}>
+              {mistakesCount}
             </span>
           </button>
         </div>
@@ -333,77 +422,177 @@ export function QuestionBankView({
         </div>
       </div>
 
-      {/* Main Solver Grid: Split View (Question: 8 cols | Resolution & Legal Basis: 4 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column (Question Card) */}
-        <div className="lg:col-span-8 bg-white border border-[#E2E8F0] rounded-xl p-5 md:p-6 shadow-xs space-y-5">
-          {/* Header Metadata */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-[#E2E8F0]">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#0F172A] text-white">
-                {activeQuestion.code}
-              </span>
-
-              {/* Subgroup Badge */}
-              {activeQuestion.origin === 'membros' && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                  <Users className="w-3 h-3 text-emerald-600" /> Criada por Membro
-                </span>
-              )}
-
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
-                {activeQuestion.subject}
-              </span>
-              <span className="text-xs text-[#64748B] font-medium">
-                {activeQuestion.board} • {activeQuestion.agency} • {activeQuestion.year}
-              </span>
-
-              {activeQuestion.author && (
-                <span className="text-[11px] text-[#475569] font-semibold bg-[#F1F5F9] px-2 py-0.5 rounded-full">
-                  Autor: <strong>{activeQuestion.author.name}</strong>
-                </span>
-              )}
-
-              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                activeQuestion.difficulty === 'Fácil'
-                  ? 'bg-[#ECFDF5] text-[#047857]'
-                  : activeQuestion.difficulty === 'Média'
-                  ? 'bg-[#FFFBEB] text-[#B45309]'
-                  : 'bg-[#FEF2F2] text-[#B91C1C]'
-              }`}>
-                {activeQuestion.difficulty}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
+      {/* Question Solver Grid or Dedicated Empty State */}
+      {filteredQuestions.length === 0 ? (
+        <div className="bg-white border border-[#E2E8F0] rounded-2xl p-10 md:p-14 text-center space-y-4 shadow-xs">
+          {selectedSubgroup === 'marcadas' ? (
+            <>
+              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto shadow-inner">
+                <Bookmark className="w-8 h-8 fill-amber-500 text-amber-500" />
+              </div>
+              <div className="max-w-md mx-auto space-y-2">
+                <h3 className="text-base font-black text-[#0F172A]">Nenhuma questão marcada ainda</h3>
+                <p className="text-xs text-[#64748B] leading-relaxed">
+                  Você ainda não favoritou nenhuma questão. Ao resolver simulados ou o banco de questões, clique no botão <strong>Marcar</strong> na questão desejada para salvá-la aqui para revisão posterior.
+                </p>
+              </div>
               <button
-                onClick={toggleBookmark}
-                title="Marcar questão para revisão posterior"
-                className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                  bookmarkedMap[activeQuestion.id]
-                    ? 'bg-amber-50 border-amber-300 text-amber-600'
-                    : 'border-[#E2E8F0] text-[#64748B] hover:text-[#0F172A]'
-                }`}
+                onClick={() => {
+                  setSelectedSubgroup('all');
+                  setCurrentIndex(0);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm transition-all"
               >
-                <Bookmark className={`w-4 h-4 ${bookmarkedMap[activeQuestion.id] ? 'fill-amber-500' : ''}`} />
+                Explorar Todas as Questões
               </button>
+            </>
+          ) : selectedSubgroup === 'erros' ? (
+            <>
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-inner">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+              </div>
+              <div className="max-w-md mx-auto space-y-2">
+                <h3 className="text-base font-black text-[#0F172A]">Seu Caderno de Erros está limpo!</h3>
+                <p className="text-xs text-[#64748B] leading-relaxed">
+                  Excelente! Sempre que você errar uma questão no Banco de Questões ou nos Simulados Oficiais, ela será salva automaticamente aqui com contador de erros para você consolidar o tema.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedSubgroup('all');
+                  setCurrentIndex(0);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm transition-all"
+              >
+                Praticar Questões Agora
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 text-slate-400 border border-slate-200 flex items-center justify-center mx-auto shadow-inner">
+                <HelpCircle className="w-8 h-8 text-slate-400" />
+              </div>
+              <div className="max-w-md mx-auto space-y-2">
+                <h3 className="text-base font-black text-[#0F172A]">Nenhuma questão encontrada com estes filtros</h3>
+                <p className="text-xs text-[#64748B] leading-relaxed">
+                  Tente alterar a disciplina ou o nível de dificuldade selecionado para encontrar mais questões.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedSubject('all');
+                  setSelectedDifficulty('all');
+                  setSelectedSubgroup('all');
+                }}
+                className="px-4 py-2.5 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm transition-all"
+              >
+                Limpar Todos os Filtros
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        /* Main Solver Grid: Split View (Question: 8 cols | Resolution & Legal Basis: 4 cols) */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Left Column (Question Card) */}
+          <div className="lg:col-span-8 bg-white border border-[#E2E8F0] rounded-xl p-5 md:p-6 shadow-xs space-y-5">
+            {/* Header Metadata */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-[#E2E8F0]">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#0F172A] text-white">
+                  {activeQuestion.code}
+                </span>
 
-              {onDeleteQuestion && (
+                {/* Subgroup Badge */}
+                {activeQuestion.origin === 'membros' && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                    <Users className="w-3 h-3 text-emerald-600" /> Criada por Membro
+                  </span>
+                )}
+
+                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
+                  {activeQuestion.subject}
+                </span>
+                <span className="text-xs text-[#64748B] font-medium">
+                  {activeQuestion.board} • {activeQuestion.agency} • {activeQuestion.year}
+                </span>
+
+                {activeQuestion.author && (
+                  <span className="text-[11px] text-[#475569] font-semibold bg-[#F1F5F9] px-2 py-0.5 rounded-full">
+                    Autor: <strong>{activeQuestion.author.name}</strong>
+                  </span>
+                )}
+
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                  activeQuestion.difficulty === 'Fácil'
+                    ? 'bg-[#ECFDF5] text-[#047857]'
+                    : activeQuestion.difficulty === 'Média'
+                    ? 'bg-[#FFFBEB] text-[#B45309]'
+                    : 'bg-[#FEF2F2] text-[#B91C1C]'
+                }`}>
+                  {activeQuestion.difficulty}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    if (window.confirm(`Tem certeza que deseja excluir a questão ${activeQuestion.code} do banco?`)) {
-                      onDeleteQuestion(activeQuestion.id);
-                      if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
-                    }
-                  }}
-                  title="Excluir questão do banco (Ação Administrativa)"
-                  className="p-1.5 rounded-lg border border-[#E2E8F0] text-[#94A3B8] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-all cursor-pointer"
+                  type="button"
+                  onClick={toggleBookmark}
+                  title={isBookmarked ? 'Remover das Questões Marcadas' : 'Marcar questão para revisão posterior'}
+                  className={`px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+                    isBookmarked
+                      ? 'bg-amber-500/15 border-amber-300 text-amber-800 shadow-2xs'
+                      : 'border-[#CBD5E1] text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
+                  }`}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Bookmark className={`w-3.5 h-3.5 text-amber-500 ${isBookmarked ? 'fill-amber-500' : ''}`} />
+                  <span>{isBookmarked ? 'Marcada' : 'Marcar'}</span>
                 </button>
-              )}
+
+                {onDeleteQuestion && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Tem certeza que deseja excluir a questão ${activeQuestion.code} do banco?`)) {
+                        onDeleteQuestion(activeQuestion.id);
+                        if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+                      }
+                    }}
+                    title="Excluir questão do banco (Ação Administrativa)"
+                    className="p-1.5 rounded-lg border border-[#E2E8F0] text-[#94A3B8] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+
+            {/* Caderno de Erros Banner if activeQuestion has registered mistake */}
+            {isMistake && activeQuestion && (
+              <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 flex flex-wrap items-center justify-between gap-2 text-xs animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>
+                    <strong>Caderno de Erros:</strong> Você errou esta questão <strong>{mistakesMap[activeQuestion.id]?.count || 1} {((mistakesMap[activeQuestion.id]?.count || 1) === 1) ? 'vez' : 'vezes'}</strong>.
+                    {mistakesMap[activeQuestion.id]?.lastMissedAt && (
+                      <span className="text-rose-700 font-normal"> (Último erro: {mistakesMap[activeQuestion.id].lastMissedAt})</span>
+                    )}
+                  </span>
+                </div>
+                {onRemoveMistake && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onRemoveMistake(activeQuestion.id);
+                      setSavedToastMessage('Questão marcada como dominada e removida do Caderno de Erros!');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Marcar como Dominada</span>
+                  </button>
+                )}
+              </div>
+            )}
 
           {/* Topic Subhead */}
           <div className="text-xs font-bold uppercase tracking-wider text-[#64748B]">
@@ -645,6 +834,7 @@ export function QuestionBankView({
           </div>
         </div>
       </div>
+      )}
 
       {/* Member Question Creator Modal (5 Mandatory Options + Grounded Justification) */}
       <MemberQuestionModal

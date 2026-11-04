@@ -60,6 +60,10 @@ interface SidebarProps {
   activeAdminSubTab?: AdminSubTab;
   onSelectAdminSubTab?: (subTab: AdminSubTab) => void;
   onCloseMobile?: () => void;
+  onNavigateToQuestions?: (subjectFilter?: string, mode?: 'all' | 'oficial' | 'membros' | 'marcadas' | 'erros') => void;
+  bookmarkedQuestionsCount?: number;
+  mistakesCount?: number;
+  activeQuestionMode?: 'all' | 'oficial' | 'membros' | 'marcadas' | 'erros';
 }
 
 export function Sidebar({
@@ -77,6 +81,10 @@ export function Sidebar({
   activeAdminSubTab = 'dashboard',
   onSelectAdminSubTab,
   onCloseMobile,
+  onNavigateToQuestions,
+  bookmarkedQuestionsCount = 0,
+  mistakesCount = 0,
+  activeQuestionMode = 'all',
 }: SidebarProps) {
   // Navigation tabs for student study modules
   const studyNavItems: { id: NavigationTab; label: string; icon: React.ReactNode; badge?: string }[] = [
@@ -305,29 +313,57 @@ export function Sidebar({
             )}
             <div 
               onClick={() => {
-                onSelectTab('questoes');
+                if (onNavigateToQuestions) {
+                  onNavigateToQuestions(undefined, 'marcadas');
+                } else {
+                  onSelectTab('questoes');
+                }
                 onCloseMobile?.();
               }}
-              className="flex items-center justify-between px-3 py-1.5 text-xs text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] rounded-lg cursor-pointer"
+              className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg cursor-pointer transition-all ${
+                currentTab === 'questoes' && activeQuestionMode === 'marcadas'
+                  ? 'bg-amber-500/10 text-amber-700 font-black border border-amber-300/80 shadow-2xs'
+                  : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
+              }`}
             >
               <span className="flex items-center gap-2">
-                <Bookmark className="w-3.5 h-3.5 text-amber-500" />
-                Questões Marcadas
+                <Bookmark className={`w-3.5 h-3.5 text-amber-500 ${currentTab === 'questoes' && activeQuestionMode === 'marcadas' ? 'fill-amber-500' : ''}`} />
+                <span>Questões Marcadas</span>
               </span>
-              <span className="text-[10px] text-[#94A3B8] font-bold">24</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums ${
+                currentTab === 'questoes' && activeQuestionMode === 'marcadas'
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-amber-100 text-amber-900'
+              }`}>
+                {bookmarkedQuestionsCount}
+              </span>
             </div>
             <div 
               onClick={() => {
-                onSelectTab('questoes');
+                if (onNavigateToQuestions) {
+                  onNavigateToQuestions(undefined, 'erros');
+                } else {
+                  onSelectTab('questoes');
+                }
                 onCloseMobile?.();
               }}
-              className="flex items-center justify-between px-3 py-1.5 text-xs text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] rounded-lg cursor-pointer"
+              className={`flex items-center justify-between px-3 py-2 text-xs rounded-lg cursor-pointer transition-all ${
+                currentTab === 'questoes' && activeQuestionMode === 'erros'
+                  ? 'bg-rose-500/10 text-rose-700 font-black border border-rose-300/80 shadow-2xs'
+                  : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]'
+              }`}
             >
               <span className="flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                Erros Frequentes
+                <AlertCircle className={`w-3.5 h-3.5 text-rose-500 ${currentTab === 'questoes' && activeQuestionMode === 'erros' ? 'text-rose-600' : ''}`} />
+                <span>Erros Frequentes</span>
               </span>
-              <span className="text-[10px] text-[#94A3B8] font-bold">12</span>
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums ${
+                currentTab === 'questoes' && activeQuestionMode === 'erros'
+                  ? 'bg-rose-600 text-white'
+                  : 'bg-rose-100 text-rose-900'
+              }`}>
+                {mistakesCount}
+              </span>
             </div>
 
             {/* Student Area Entry (Only visible for students) */}

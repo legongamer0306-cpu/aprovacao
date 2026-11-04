@@ -15,7 +15,9 @@ import {
   Network,
   Scale,
   ShieldAlert,
-  Timer
+  Timer,
+  Bookmark,
+  AlertCircle
 } from 'lucide-react';
 import { ExamTarget, ManagedUser } from '@/lib/types';
 import { NavigationTab } from './Sidebar';
@@ -29,6 +31,7 @@ interface CommandPaletteProps {
   onOpenStudentArea?: () => void;
   isAdminAuthenticated?: boolean;
   currentStudent?: ManagedUser | null;
+  onNavigateToQuestions?: (subjectFilter?: string, mode?: 'all' | 'oficial' | 'membros' | 'marcadas' | 'erros') => void;
 }
 
 export function CommandPalette({
@@ -40,6 +43,7 @@ export function CommandPalette({
   onOpenStudentArea,
   isAdminAuthenticated = false,
   currentStudent,
+  onNavigateToQuestions,
 }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
 
@@ -59,17 +63,26 @@ export function CommandPalette({
 
   if (!isOpen) return null;
 
-  const baseActions = [
-    { label: 'Ir para Banco de Questões', tab: 'questoes' as NavigationTab, icon: <BookOpen className="w-4 h-4 text-[#2563EB]" /> },
-    { label: 'Simulados & Provas Cronometradas', tab: 'simulados' as NavigationTab, icon: <Timer className="w-4 h-4 text-emerald-600" /> },
-    { label: 'Mapas Mentais & Mnemônicos Visuais', tab: 'mapas' as NavigationTab, icon: <Network className="w-4 h-4 text-purple-600" /> },
-    { label: 'Meus PDFs (Download & Organização)', tab: 'pdfs' as NavigationTab, icon: <FileText className="w-4 h-4 text-[#2563EB]" /> },
-    { label: 'Visualizar Cronograma de Hoje', tab: 'cronograma' as NavigationTab, icon: <Calendar className="w-4 h-4 text-emerald-600" /> },
-    { label: 'Auditoria de Desempenho e Gargalos', tab: 'desempenho' as NavigationTab, icon: <BarChart3 className="w-4 h-4 text-amber-600" /> },
-    { label: 'Súmulas, Lei Seca & Resoluções do CNJ', tab: 'jurisprudencia' as NavigationTab, icon: <Scale className="w-4 h-4 text-amber-600" /> },
+  interface ActionItem {
+    label: string;
+    tab: NavigationTab;
+    mode?: 'all' | 'oficial' | 'membros' | 'marcadas' | 'erros';
+    icon: React.ReactNode;
+  }
+
+  const baseActions: ActionItem[] = [
+    { label: 'Ir para Banco de Questões', tab: 'questoes', icon: <BookOpen className="w-4 h-4 text-[#2563EB]" /> },
+    { label: '⭐ Ver Questões Marcadas (Favoritas)', tab: 'questoes', mode: 'marcadas', icon: <Bookmark className="w-4 h-4 text-amber-500 fill-amber-500" /> },
+    { label: '❌ Caderno de Erros (Erros Frequentes)', tab: 'questoes', mode: 'erros', icon: <AlertCircle className="w-4 h-4 text-rose-500" /> },
+    { label: 'Simulados & Provas Cronometradas', tab: 'simulados', icon: <Timer className="w-4 h-4 text-emerald-600" /> },
+    { label: 'Mapas Mentais & Mnemônicos Visuais', tab: 'mapas', icon: <Network className="w-4 h-4 text-purple-600" /> },
+    { label: 'Meus PDFs (Download & Organização)', tab: 'pdfs', icon: <FileText className="w-4 h-4 text-[#2563EB]" /> },
+    { label: 'Visualizar Cronograma de Hoje', tab: 'cronograma', icon: <Calendar className="w-4 h-4 text-emerald-600" /> },
+    { label: 'Auditoria de Desempenho e Gargalos', tab: 'desempenho', icon: <BarChart3 className="w-4 h-4 text-amber-600" /> },
+    { label: 'Súmulas, Lei Seca & Resoluções do CNJ', tab: 'jurisprudencia', icon: <Scale className="w-4 h-4 text-amber-600" /> },
   ];
 
-  const quickActions = (isAdminAuthenticated && !currentStudent)
+  const quickActions: ActionItem[] = (isAdminAuthenticated && !currentStudent)
     ? [
         ...baseActions,
         { label: 'Painel do Administrador', tab: 'admin' as NavigationTab, icon: <ShieldAlert className="w-4 h-4 text-rose-600" /> },
@@ -106,7 +119,11 @@ export function CommandPalette({
             <div
               key={action.label}
               onClick={() => {
-                onNavigate(action.tab);
+                if (action.mode && onNavigateToQuestions) {
+                  onNavigateToQuestions(undefined, action.mode);
+                } else {
+                  onNavigate(action.tab);
+                }
                 onClose();
               }}
               className="px-3 py-2.5 rounded-lg flex items-center justify-between hover:bg-[#F8FAFC] text-xs font-semibold text-[#0F172A] cursor-pointer group transition-colors"

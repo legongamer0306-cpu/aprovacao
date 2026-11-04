@@ -2371,4 +2371,25 @@ export const MOCK_SIMULADO_RANKINGS: MockExamRankingEntry[] = [
   }
 ];
 
+export const INITIAL_STUDENT_BOOKMARKS: Record<string, string[]> = {
+  'usr-1': ['q-101', 'q-102', 'q-doc-201', 'q-doc-202'],
+  'usr-2': ['q-101', 'q-103'],
+  'usr-3': ['q-102', 'q-doc-201'],
+};
+
+export const INITIAL_STUDENT_MISTAKES: Record<string, Record<string, { count: number; lastMissedAt: string }>> = {
+  'usr-1': {
+    'q-102': { count: 3, lastMissedAt: 'Ontem às 21:15' },
+    'q-doc-201': { count: 2, lastMissedAt: 'Hoje às 11:30' },
+    'q-104': { count: 1, lastMissedAt: 'Hoje às 14:00' },
+  },
+  'usr-2': {
+    'q-103': { count: 2, lastMissedAt: 'Ontem às 19:40' },
+    'q-101': { count: 1, lastMissedAt: 'Hoje às 10:20' },
+  },
+  'usr-3': {
+    'q-102': { count: 1, lastMissedAt: 'Ontem às 16:30' },
+  },
+};
+
 

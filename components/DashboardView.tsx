@@ -14,7 +14,8 @@ import {
   BrainCircuit,
   AlertCircle,
   Play,
-  FileText
+  FileText,
+  Bookmark
 } from 'lucide-react';
 import { ExamTarget, DailyTask, SubjectPerformance } from '@/lib/types';
 import { MOCK_HOURLY_HEATMAP } from '@/lib/mockData';
@@ -24,7 +25,7 @@ interface DashboardViewProps {
   tasks: DailyTask[];
   onToggleTask: (taskId: string) => void;
   performances: SubjectPerformance[];
-  onNavigateToQuestions: (subjectFilter?: string) => void;
+  onNavigateToQuestions: (subjectFilter?: string, mode?: 'all' | 'oficial' | 'membros' | 'marcadas' | 'erros') => void;
   onNavigateToSimulados?: () => void;
   onOpenPasteEdital?: () => void;
 }
@@ -76,6 +77,22 @@ export function DashboardView({
               Colar Edital
             </button>
           )}
+          <button
+            onClick={() => onNavigateToQuestions(undefined, 'marcadas')}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-3 rounded-lg border border-amber-200 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-bold text-xs shadow-2xs transition-all cursor-pointer"
+            title="Revisar questões marcadas com estrela"
+          >
+            <Bookmark className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
+            <span className="hidden sm:inline">Marcadas</span>
+          </button>
+          <button
+            onClick={() => onNavigateToQuestions(undefined, 'erros')}
+            className="flex items-center justify-center gap-1.5 px-3.5 py-3 rounded-lg border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-rose-900 font-bold text-xs shadow-2xs transition-all cursor-pointer"
+            title="Acessar caderno de erros frequentes"
+          >
+            <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+            <span className="hidden sm:inline">Caderno de Erros</span>
+          </button>
           <button
             onClick={() => onNavigateToQuestions()}
             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs shadow-sm transition-all hover:translate-y-[-1px] cursor-pointer"

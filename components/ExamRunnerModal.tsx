@@ -30,6 +30,7 @@ interface ExamRunnerModalProps {
   rankings?: MockExamRankingEntry[];
   onRecordRankingEntry?: (entry: MockExamRankingEntry) => void;
   onFinishExam: (examId: string, score: number, correctCount: number, timeSpentSec: number, pointsEarned?: number, totalPointsPossible?: number) => void;
+  onRecordMistake?: (questionId: string) => void;
 }
 
 export function ExamRunnerModal({
@@ -40,6 +41,7 @@ export function ExamRunnerModal({
   rankings = [],
   onRecordRankingEntry,
   onFinishExam,
+  onRecordMistake,
 }: ExamRunnerModalProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
@@ -63,6 +65,8 @@ export function ExamRunnerModal({
       if (selectedAnswers[q.id] === q.correctOptionId) {
         correct++;
         earnedPts += qPts;
+      } else {
+        onRecordMistake?.(q.id);
       }
     });
 
@@ -92,7 +96,7 @@ export function ExamRunnerModal({
     setLocalRankings((prev) => [rankingEntry, ...prev]);
     onRecordRankingEntry?.(rankingEntry);
     onFinishExam(exam.id, scorePct, correct, timeSpent, earnedPts, totalPts);
-  }, [exam, selectedAnswers, timeSpent, onFinishExam, onRecordRankingEntry, currentStudent]);
+  }, [exam, selectedAnswers, timeSpent, onFinishExam, onRecordRankingEntry, currentStudent, onRecordMistake]);
 
   const handleFinishRef = React.useRef(handleFinish);
   useEffect(() => {

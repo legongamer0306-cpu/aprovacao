@@ -41,7 +41,9 @@ import {
   MOCK_SIMULADOS,
   DEFAULT_LEGAL_ITEMS_DATA,
   MOCK_MANAGED_USERS,
-  MOCK_SIMULADO_RANKINGS
+  MOCK_SIMULADO_RANKINGS,
+  INITIAL_STUDENT_BOOKMARKS,
+  INITIAL_STUDENT_MISTAKES
 } from '@/lib/mockData';
 import { 
   ExamTarget, 
@@ -112,6 +114,9 @@ export default function HomePage() {
   });
   const [pdfs, setPdfs] = useState<StudyPDF[]>(MOCK_PDFS);
   const [subjectClasses, setSubjectClasses] = useState<string[]>(PDF_SUBJECT_CLASSES);
+  const [questionFilterMode, setQuestionFilterMode] = useState<'all' | 'oficial' | 'membros' | 'marcadas' | 'erros'>('all');
+  const [studentBookmarkedQuestions, setStudentBookmarkedQuestions] = useState<Record<string, string[]>>(INITIAL_STUDENT_BOOKMARKS);
+  const [studentMistakes, setStudentMistakes] = useState<Record<string, Record<string, { count: number; lastMissedAt: string }>>>(INITIAL_STUDENT_MISTAKES);
 
   // Safe client hydration from localStorage on mount (eliminates all SSR hydration mismatches)
   useEffect(() => {
@@ -227,6 +232,18 @@ export default function HomePage() {
         if (savedClasses) {
           const parsed = JSON.parse(savedClasses);
           if (Array.isArray(parsed) && parsed.length > 0) setSubjectClasses(parsed);
+        }
+
+        const savedBookmarks = localStorage.getItem('aprovacao_total_student_bookmarked_questions');
+        if (savedBookmarks) {
+          const parsed = JSON.parse(savedBookmarks);
+          if (parsed && typeof parsed === 'object') setStudentBookmarkedQuestions(parsed);
+        }
+
+        const savedMistakes = localStorage.getItem('aprovacao_total_student_mistakes');
+        if (savedMistakes) {
+          const parsed = JSON.parse(savedMistakes);
+          if (parsed && typeof parsed === 'object') setStudentMistakes(parsed);
         }
       } catch (err) {
         console.error('Falha ao restaurar dados persistidos no cliente:', err);
@@ -379,6 +396,20 @@ export default function HomePage() {
       localStorage.setItem('aprovacao_total_pdf_subject_classes', JSON.stringify(subjectClasses));
     } catch {}
   }, [subjectClasses, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      localStorage.setItem('aprovacao_total_student_bookmarked_questions', JSON.stringify(studentBookmarkedQuestions));
+    } catch {}
+  }, [studentBookmarkedQuestions, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      localStorage.setItem('aprovacao_total_student_mistakes', JSON.stringify(studentMistakes));
+    } catch {}
+  }, [studentMistakes, isMounted]);
 
   // Question Handlers - Salva automaticamente no banco de questões permanente (localStorage e state)
   const handleAddQuestion = (newQuestion: ExamQuestion) => {
@@ -1020,8 +1051,56 @@ export default function HomePage() {
     ? (studentAuditLogs[currentStudent.id] || getInitialStudentAuditLogs(currentStudent.id))
     : (studentAuditLogs['usr-1'] || []);
 
-  const handleNavigateToQuestions = (subjectFilter?: string) => {
+  // Isolamento de Questões Marcadas e Caderno de Erros por Aluno
+  const activeBookmarkedQuestionIds = studentBookmarkedQuestions[activeStudentId] || [];
+  const activeMistakesMap = studentMistakes[activeStudentId] || {};
+  const activeBookmarkedCount = activeBookmarkedQuestionIds.length;
+  const activeMistakesCount = Object.keys(activeMistakesMap).length;
+
+  const handleToggleBookmark = (questionId: string) => {
+    const studentId = currentStudent?.id || 'usr-1';
+    setStudentBookmarkedQuestions((prev) => {
+      const currentList = prev[studentId] || [];
+      const exists = currentList.includes(questionId);
+      const updatedList = exists
+        ? currentList.filter((id) => id !== questionId)
+        : [...currentList, questionId];
+      return { ...prev, [studentId]: updatedList };
+    });
+  };
+
+  const handleRecordMistake = (questionId: string) => {
+    const studentId = currentStudent?.id || 'usr-1';
+    const nowStr = 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    setStudentMistakes((prev) => {
+      const studentDict = prev[studentId] || {};
+      const currentItem = studentDict[questionId];
+      const newCount = (currentItem?.count || 0) + 1;
+      return {
+        ...prev,
+        [studentId]: {
+          ...studentDict,
+          [questionId]: { count: newCount, lastMissedAt: nowStr },
+        },
+      };
+    });
+  };
+
+  const handleRemoveMistake = (questionId: string) => {
+    const studentId = currentStudent?.id || 'usr-1';
+    setStudentMistakes((prev) => {
+      const studentDict = { ...(prev[studentId] || {}) };
+      delete studentDict[questionId];
+      return { ...prev, [studentId]: studentDict };
+    });
+  };
+
+  const handleNavigateToQuestions = (
+    subjectFilter?: string, 
+    mode?: 'all' | 'oficial' | 'membros' | 'marcadas' | 'erros'
+  ) => {
     setSubjectFilterForQuestions(subjectFilter);
+    setQuestionFilterMode(mode || 'all');
     setCurrentTab('questoes');
   };
 
@@ -1069,8 +1148,15 @@ export default function HomePage() {
             currentTab={currentTab}
             onSelectTab={(tab) => {
               setCurrentTab(tab);
-              if (tab !== 'questoes') setSubjectFilterForQuestions(undefined);
+              if (tab !== 'questoes') {
+                setSubjectFilterForQuestions(undefined);
+                setQuestionFilterMode('all');
+              }
             }}
+            onNavigateToQuestions={handleNavigateToQuestions}
+            bookmarkedQuestionsCount={activeBookmarkedCount}
+            mistakesCount={activeMistakesCount}
+            activeQuestionMode={questionFilterMode}
             currentTarget={currentTarget}
             onOpenTargetModal={() => setIsTargetModalOpen(true)}
             onOpenPasteEdital={() => setIsPasteEditalOpen(true)}
@@ -1101,9 +1187,16 @@ export default function HomePage() {
               currentTab={currentTab}
               onSelectTab={(tab) => {
                 setCurrentTab(tab);
-                if (tab !== 'questoes') setSubjectFilterForQuestions(undefined);
+                if (tab !== 'questoes') {
+                  setSubjectFilterForQuestions(undefined);
+                  setQuestionFilterMode('all');
+                }
                 setIsMobileSidebarOpen(false);
               }}
+              onNavigateToQuestions={handleNavigateToQuestions}
+              bookmarkedQuestionsCount={activeBookmarkedCount}
+              mistakesCount={activeMistakesCount}
+              activeQuestionMode={questionFilterMode}
               currentTarget={currentTarget}
               onOpenTargetModal={() => {
                 setIsTargetModalOpen(true);
@@ -1254,7 +1347,15 @@ export default function HomePage() {
                   <QuestionBankView
                     questions={questions}
                     initialSubjectFilter={subjectFilterForQuestions}
+                    initialMode={questionFilterMode}
+                    bookmarkedQuestionIds={activeBookmarkedQuestionIds}
+                    mistakesMap={activeMistakesMap}
+                    onBookmarkToggle={handleToggleBookmark}
+                    onRemoveMistake={handleRemoveMistake}
                     onRecordAnswer={(questionId, isCorrect) => {
+                      if (!isCorrect) {
+                        handleRecordMistake(questionId);
+                      }
                       if (isCorrect) {
                         setStreakDays((prev) => prev);
                       }
@@ -1492,6 +1593,7 @@ export default function HomePage() {
           currentStudent={currentStudent}
           rankings={mockRankings}
           onRecordRankingEntry={handleRecordRankingEntry}
+          onRecordMistake={handleRecordMistake}
           onFinishExam={(examId, score, correctCount, timeSpentSec) => {
             setSimulados((prev) => {
               const updated = prev.map((s) =>
@@ -1552,6 +1654,7 @@ export default function HomePage() {
         onOpenStudentArea={() => setIsStudentAreaOpen(true)}
         isAdminAuthenticated={isAdminLoggedIn}
         currentStudent={currentStudent}
+        onNavigateToQuestions={handleNavigateToQuestions}
       />
 
       {/* Student Area & Authentication Modal */}
