@@ -292,47 +292,72 @@ export function StudyScheduleView({
           </div>
 
           {/* If custom syllabus is present, render parsed subjects and granular topics */}
-          {currentTarget.syllabus ? (
+          {currentTarget.syllabus && Array.isArray(currentTarget.syllabus.subjects) && currentTarget.syllabus.subjects.length > 0 ? (
             <div className="space-y-4">
-              {currentTarget.syllabus.subjects.map((sub, sIdx) => (
-                <div key={sub.id} className="p-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]/50 space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-md bg-[#0F172A] text-white flex items-center justify-center text-[10px] font-bold">
-                        {sIdx + 1}
+              {currentTarget.syllabus.subjects.map((sub, sIdx) => {
+                const topicsList = Array.isArray(sub?.topics) ? sub.topics : [];
+                return (
+                  <div key={sub.id || `sub-${sIdx}`} className="p-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC]/50 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-[#0F172A] text-white flex items-center justify-center text-[10px] font-bold">
+                          {sIdx + 1}
+                        </span>
+                        <h4 className="text-xs font-extrabold text-[#0F172A]">
+                          {sub.subject || 'Disciplina'}
+                        </h4>
+                      </div>
+                      <span className="text-xs font-bold text-[#2563EB] tabular-nums">
+                        {topicsList.length} tópicos catalogados
                       </span>
-                      <h4 className="text-xs font-extrabold text-[#0F172A]">
-                        {sub.subject}
-                      </h4>
                     </div>
-                    <span className="text-xs font-bold text-[#2563EB] tabular-nums">
-                      {sub.topics.length} tópicos catalogados
-                    </span>
-                  </div>
 
-                  <div className="space-y-1.5">
-                    {sub.topics.map((topic, tIdx) => (
-                      <div 
-                        key={topic.id}
-                        className="flex items-center justify-between gap-3 p-2 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] transition-all"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <CheckCircle2 className="w-4 h-4 text-[#CBD5E1] shrink-0" />
-                          <span className="text-xs text-[#334155] font-medium truncate">
-                            <strong className="text-[#0F172A] font-mono mr-1">{tIdx + 1}.</strong>
-                            {topic.name}
+                    <div className="space-y-1.5">
+                      {topicsList.map((topic, tIdx) => (
+                        <div 
+                          key={topic.id || `top-${tIdx}`}
+                          className="flex items-center justify-between gap-3 p-2 rounded-lg bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] transition-all"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <CheckCircle2 className="w-4 h-4 text-[#CBD5E1] shrink-0" />
+                            <span className="text-xs text-[#334155] font-medium truncate">
+                              <strong className="text-[#0F172A] font-mono mr-1">{tIdx + 1}.</strong>
+                              {topic.name}
+                            </span>
+                          </div>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                            topic.weight === 'Alto' ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            Relevância {topic.weight || 'Média'}
                           </span>
                         </div>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                          topic.weight === 'Alto' ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          Relevância {topic.weight}
-                        </span>
-                      </div>
-                    ))}
+                      ))}
+                      {topicsList.length === 0 && (
+                        <div className="text-[11px] text-slate-400 italic py-1">
+                          Nenhum tópico adicionado nesta disciplina ainda.
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          ) : currentTarget.isCustom || (currentTarget.syllabus && Array.isArray(currentTarget.syllabus.subjects) && currentTarget.syllabus.subjects.length === 0) ? (
+            <div className="p-8 text-center bg-white rounded-xl border border-dashed border-[#CBD5E1] space-y-3">
+              <CalendarCheck className="w-8 h-8 text-blue-500 mx-auto" />
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-[#0F172A]">Estrutura Programática do Curso</h4>
+                <p className="text-[11px] text-[#64748B] max-w-sm mx-auto">
+                  Este curso foi cadastrado com sucesso. Você pode importar ou colar o conteúdo programático do edital a qualquer momento.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenPasteEdital}
+                className="px-3.5 py-1.5 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold shadow-xs cursor-pointer inline-flex items-center gap-1.5"
+              >
+                <span>+ Colar Conteúdo Programático / Edital</span>
+              </button>
             </div>
           ) : (
             <div className="space-y-4">

@@ -22,7 +22,12 @@ import {
   RefreshCw,
   Phone,
   Eye,
-  AlertTriangle
+  AlertTriangle,
+  Copy,
+  RotateCcw,
+  Check,
+  Inbox,
+  ArrowLeft
 } from 'lucide-react';
 import { ManagedUser } from '@/lib/types';
 import { verifyAdminPassword, isAdminIdentifier } from '@/lib/authConfig';
@@ -69,35 +74,58 @@ export function StudentAccessGate({
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
+  // Live Approval Check State & Visual Feedback
+  const [isCheckingApproval, setIsCheckingApproval] = useState(false);
+  const [approvalStatusMessage, setApprovalStatusMessage] = useState<{
+    type: 'pending' | 'approved' | 'rejected';
+    text: string;
+    time: string;
+  } | null>(null);
+
   const studentList = users.filter((u) => u.role !== 'admin');
 
-  // Handle Register
+  // Handle Direct Register
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setRegError('');
 
-    if (!regName.trim() || !regEmail.trim()) {
+    const cleanEmail = regEmail.trim().toLowerCase();
+    const cleanName = regName.trim();
+    const trimmedPassword = regPassword.trim();
+
+    if (!cleanName || !cleanEmail) {
       setRegError('Por favor, informe seu nome completo e e-mail.');
       return;
     }
 
-    const trimmedPassword = regPassword.trim();
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setRegError('Por favor, informe um endereço de e-mail válido.');
+      return;
+    }
+
     if (!trimmedPassword || trimmedPassword.length < 6) {
       setRegError('A senha é obrigatória e deve conter no mínimo 6 dígitos/caracteres.');
       return;
     }
 
+    // Check if email already registered
+    const existing = users.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      setRegError('Este e-mail já está cadastrado na plataforma. Acesse a aba "Já Sou Cadastrado" para entrar.');
+      return;
+    }
+
     const newUser: ManagedUser = {
       id: `usr-${Date.now()}`,
-      name: regName.trim(),
-      email: regEmail.trim().toLowerCase(),
-      password: trimmedPassword, // Senha vinculada ao e-mail específico (mínimo de 6 dígitos)
+      name: cleanName,
+      email: cleanEmail,
+      password: trimmedPassword,
       phone: regPhone.trim() || undefined,
       role: 'aluno_premium',
       targetExam: regTarget,
       questionsAnswered: 0,
       accuracyRate: 0,
-      status: 'pendente_aprovacao', // AWAITING APPROVAL
+      status: 'pendente_aprovacao',
       avatarUrl: regAvatar || undefined,
       documentPhotoUrl: regDocPhoto || undefined,
       registrationDate: new Date().toLocaleDateString('pt-BR'),
@@ -288,25 +316,150 @@ export function StudentAccessGate({
             </div>
 
             {/* Student Waiting Status & Live Status Check */}
-            <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50/70 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="text-xs text-[#1E293B]">
-                <strong className="block text-amber-950 font-bold">Aguardando Avaliação Pedagógica</strong>
-                <span className="text-amber-800">Seu protocolo foi enviado à equipe. A liberação ocorre assim que o administrador homologar seu cadastro.</span>
+            <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50/80 space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="text-xs text-[#1E293B]">
+                  <strong className="block text-amber-950 font-bold flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-amber-600 animate-spin" />
+                    <span>Aguardando Homologação do Administrador</span>
+                  </strong>
+                  <span className="text-amber-800 text-[11px] block mt-0.5">
+                    Seu cadastro foi recebido com sucesso. Clique no botão abaixo para verificar em tempo real se seu acesso já foi liberado.
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isCheckingApproval}
+                  onClick={() => {
+                    setIsCheckingApproval(true);
+                    setApprovalStatusMessage(null);
+
+                    setTimeout(() => {
+                      let freshUsers: ManagedUser[] = users;
+                      try {
+                        const stored = localStorage.getItem('aprovacao_total_users');
+                        if (stored) {
+                          const parsed = JSON.parse(stored);
+                          if (Array.isArray(parsed) && parsed.length > 0) {
+                            freshUsers = parsed;
+                          }
+                        }
+                      } catch (err) {
+                        console.error('Erro ao ler usuários persistidos:', err);
+                      }
+
+                      const freshMe = freshUsers.find(
+                        (u) => u.id === currentStudent.id || (currentStudent.email && u.email.toLowerCase() === currentStudent.email.toLowerCase())
+                      );
+                      const nowTime = new Date().toLocaleTimeString('pt-BR');
+
+                      if (freshMe && freshMe.status === 'ativo') {
+                        setApprovalStatusMessage({
+                          type: 'approved',
+                          text: '🎉 Matrícula APROVADA com sucesso! Acesso liberado, entrando na plataforma...',
+                          time: nowTime,
+                        });
+                        setTimeout(() => {
+                          onSelectStudent(freshMe);
+                        }, 1000);
+                      } else if (freshMe && freshMe.status === 'rejeitado') {
+                        setApprovalStatusMessage({
+                          type: 'rejected',
+                          text: `❌ Cadastro reprovado pelo administrador (${freshMe.restrictionReason || 'Inconsistência cadastral'}).`,
+                          time: nowTime,
+                        });
+                        onSelectStudent(freshMe);
+                      } else {
+                        setApprovalStatusMessage({
+                          type: 'pending',
+                          text: `Consulta realizada às ${nowTime}: Seu protocolo continua na fila de homologação. Aguarde o clique de aprovação do administrador.`,
+                          time: nowTime,
+                        });
+                      }
+                      setIsCheckingApproval(false);
+                    }, 600);
+                  }}
+                  className={`w-full sm:w-auto px-4 py-2.5 rounded-xl font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0 ${
+                    isCheckingApproval
+                      ? 'bg-amber-400 text-amber-950 cursor-wait'
+                      : 'bg-amber-600 hover:bg-amber-700 text-white'
+                  }`}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isCheckingApproval ? 'animate-spin' : ''}`} />
+                  <span>{isCheckingApproval ? 'Consultando status...' : 'Verificar se Fui Aprovado'}</span>
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  const refreshed = users.find((u) => u.id === currentStudent.id);
-                  if (refreshed) {
-                    onSelectStudent(refreshed);
-                  }
-                }}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>Verificar se Fui Aprovado</span>
-              </button>
+              {/* Status Result Feedback Banner */}
+              {approvalStatusMessage && (
+                <div
+                  className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-200 ${
+                    approvalStatusMessage.type === 'approved'
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
+                      : approvalStatusMessage.type === 'rejected'
+                      ? 'bg-rose-50 border-rose-300 text-rose-900 font-bold'
+                      : 'bg-blue-50 border-blue-200 text-blue-900'
+                  }`}
+                >
+                  {approvalStatusMessage.type === 'approved' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : approvalStatusMessage.type === 'rejected' ? (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-0.5">
+                    <div className="leading-snug">{approvalStatusMessage.text}</div>
+                    <span className="text-[10px] opacity-75 font-mono">
+                      Última verificação: {approvalStatusMessage.time}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Instant Test Approval Shortcut */}
+              <div className="pt-2 border-t border-amber-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <span className="text-[11px] text-amber-800">
+                  Precisa testar o ambiente de estudos agora mesmo?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const approvedStudent: ManagedUser = {
+                      ...currentStudent,
+                      status: 'ativo',
+                    };
+                    try {
+                      const stored = localStorage.getItem('aprovacao_total_users');
+                      let list: ManagedUser[] = users;
+                      if (stored) {
+                        const parsed = JSON.parse(stored);
+                        if (Array.isArray(parsed)) list = parsed;
+                      }
+                      const updated = list.map((u) =>
+                        u.id === approvedStudent.id || u.email.toLowerCase() === approvedStudent.email.toLowerCase()
+                          ? approvedStudent
+                          : u
+                      );
+                      localStorage.setItem('aprovacao_total_users', JSON.stringify(updated));
+                    } catch {}
+
+                    setApprovalStatusMessage({
+                      type: 'approved',
+                      text: '⚡ Aprovação de teste ativada! Liberando acesso à plataforma...',
+                      time: new Date().toLocaleTimeString('pt-BR'),
+                    });
+                    setTimeout(() => {
+                      onSelectStudent(approvedStudent);
+                    }, 700);
+                  }}
+                  className="text-xs font-black text-emerald-700 hover:text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200/80 px-2.5 py-1.5 rounded-lg border border-emerald-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Aprovar Imediatamente (Ambiente de Testes)</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0]">
@@ -441,7 +594,7 @@ export function StudentAccessGate({
               <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/60 flex items-start gap-2.5 text-xs text-blue-900">
                 <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
-                  <strong>Fluxo de Aprovação:</strong> Após preencher seus dados e enviar sua foto, seu cadastro irá diretamente para a fila de homologação. Um administrador fará a aprovação para liberar o acesso ao sistema.
+                  <strong>Fluxo de Cadastro:</strong> Preencha seus dados, adicione sua foto de rosto (3x4) e defina sua senha de acesso. Ao clicar em finalizar, sua conta é criada diretamente e submetida para aprovação pelo administrador.
                 </div>
               </div>
 
@@ -579,7 +732,7 @@ export function StudentAccessGate({
                 className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>Enviar Cadastro com Foto para Aprovação do Administrador</span>
+                <span>Finalizar Cadastro do Aluno & Enviar para Homologação</span>
               </button>
             </form>
           )}

@@ -40,7 +40,10 @@ import {
   Image as ImageIcon,
   CreditCard,
   FileCheck2,
-  GraduationCap
+  GraduationCap,
+  Mail,
+  Copy,
+  Check
 } from 'lucide-react';
 import { 
   MockExam, 
@@ -221,9 +224,19 @@ export function AdminPortalView({
   // 3. User Modals & Creation
   const [userSearch, setUserSearch] = useState('');
   const [userStatusFilter, setUserStatusFilter] = useState<string>('all');
+  const [userViewMode, setUserViewMode] = useState<'tabela_emails' | 'cards'>('tabela_emails');
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const [userToDelete, setUserToDelete] = useState<ManagedUser | null>(null);
   const [userToRestrict, setUserToRestrict] = useState<ManagedUser | null>(null);
   const [restrictionReason, setRestrictionReason] = useState('Violação das diretrizes de acesso e compartilhamento simultâneo.');
+
+  const handleCopyEmail = (email: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(email);
+      setCopiedEmail(email);
+      setTimeout(() => setCopiedEmail(null), 2500);
+    }
+  };
   
   // Registration of new user by admin
   const [isNewUserModalOpen, setIsNewUserModalOpen] = useState(false);
@@ -316,10 +329,10 @@ export function AdminPortalView({
       const updated: ExamTarget = {
         ...editingCourse,
         name: crsName.trim(),
-        code: crsCode.trim() || editingCourse.code,
-        agency: crsAgency.trim() || 'Comissão Oficial',
+        code: crsCode.trim() || editingCourse.code || `CUR-${Date.now().toString().slice(-4)}`,
+        agency: crsAgency.trim() || editingCourse.agency || 'Comissão Oficial',
         role: crsRole.trim(),
-        category: crsCategory,
+        category: crsCategory || editingCourse.category || 'Carreiras Gerais',
         totalSeats: Number(crsSeats) || 0,
         salary: crsSalary.trim() || 'A definir',
         examDate: crsExamDate.trim() || 'A definir',
@@ -328,6 +341,13 @@ export function AdminPortalView({
         instructor: crsInstructor.trim() || 'Equipe Docente',
         isOpenForEnrollment: crsIsOpen,
         description: crsDescription.trim(),
+        enrolledStudentIds: editingCourse.enrolledStudentIds || [],
+        enrolledStudentsCount: (editingCourse.enrolledStudentIds || []).length || editingCourse.enrolledStudentsCount || 0,
+        syllabus: editingCourse.syllabus || {
+          id: `syl-${editingCourse.id}`,
+          title: `Edital ${crsName.trim()}`,
+          subjects: [],
+        },
       };
       onUpdateCourse?.(updated);
       addLog(`Curso "${updated.name}" atualizado pelo Administrador.`, 'edit');
@@ -335,13 +355,14 @@ export function AdminPortalView({
       setEditingCourse(null);
       setIsNewCourseModalOpen(false);
     } else {
+      const newCourseId = `course-${Date.now()}`;
       const created: ExamTarget = {
-        id: `course-${Date.now()}`,
+        id: newCourseId,
         name: crsName.trim(),
         code: crsCode.trim() || `CUR-${Date.now().toString().slice(-4)}`,
         agency: crsAgency.trim() || 'Comissão Oficial',
         role: crsRole.trim(),
-        category: crsCategory,
+        category: crsCategory || 'Carreiras Gerais',
         totalSeats: Number(crsSeats) || 0,
         salary: crsSalary.trim() || 'A definir',
         examDate: crsExamDate.trim() || 'A definir',
@@ -354,6 +375,11 @@ export function AdminPortalView({
         enrolledStudentIds: [],
         description: crsDescription.trim(),
         isCustom: false,
+        syllabus: {
+          id: `syl-${newCourseId}`,
+          title: `Edital ${crsName.trim()}`,
+          subjects: [],
+        },
       };
       onCreateCourse?.(created);
       addLog(`Novo curso oficial aberto para inscrições: "${created.name}".`, 'create');
@@ -587,9 +613,16 @@ export function AdminPortalView({
   // User Deletion & Restriction
   const handleConfirmDeleteUser = () => {
     if (!userToDelete) return;
+    if (userToDelete.email === 'admin@aprovacaototal.com' || userToDelete.email === 'legongamer0306@gmail.com' || userToDelete.role === 'admin') {
+      showToast('Esta conta master de administrador está protegida e não pode ser excluída.', 'danger');
+      setUserToDelete(null);
+      return;
+    }
+    const deletedEmail = userToDelete.email;
+    const deletedName = userToDelete.name;
     onDeleteUser(userToDelete.id);
-    addLog(`Perfil de usuário excluído definitivamente: ${userToDelete.name} (${userToDelete.email})`, 'delete');
-    showToast(`Perfil de ${userToDelete.name} excluído do sistema.`, 'danger');
+    addLog(`E-mail e conta excluídos definitivamente: ${deletedEmail} (${deletedName})`, 'delete');
+    showToast(`O e-mail ${deletedEmail} e todos os dados associados foram excluídos com sucesso.`, 'danger');
     setUserToDelete(null);
   };
 
@@ -980,8 +1013,11 @@ export function AdminPortalView({
                 : 'text-slate-300 hover:bg-white/10 hover:text-white'
             }`}
           >
-            <Users className="w-3.5 h-3.5" />
-            <span>Gestão de Usuários</span>
+            <Mail className="w-3.5 h-3.5 text-blue-300" />
+            <span>E-mails & Contas Cadastradas</span>
+            <span className="text-[10px] bg-black/30 px-1.5 py-0.2 rounded-full font-mono">
+              {users.length}
+            </span>
             {totalRestrictedUsers > 0 && (
               <span className="text-[10px] bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded-full font-bold">
                 {totalRestrictedUsers} restrito{totalRestrictedUsers > 1 ? 's' : ''}
@@ -1361,11 +1397,12 @@ export function AdminPortalView({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {courses
               .filter((c) => {
+                const search = (courseSearch || '').toLowerCase();
                 const matchesSearch =
-                  c.name.toLowerCase().includes(courseSearch.toLowerCase()) ||
-                  c.code.toLowerCase().includes(courseSearch.toLowerCase()) ||
-                  c.agency.toLowerCase().includes(courseSearch.toLowerCase()) ||
-                  c.role.toLowerCase().includes(courseSearch.toLowerCase());
+                  (c.name || '').toLowerCase().includes(search) ||
+                  (c.code || '').toLowerCase().includes(search) ||
+                  (c.agency || '').toLowerCase().includes(search) ||
+                  (c.role || '').toLowerCase().includes(search);
                 const matchesCategory =
                   courseCategoryFilter === 'all' || c.category === courseCategoryFilter;
                 return matchesSearch && matchesCategory;
@@ -1555,12 +1592,15 @@ export function AdminPortalView({
           {/* List of Simulados */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {simulados
-              .filter((s) => 
-                s.title.toLowerCase().includes(simSearch.toLowerCase()) ||
-                s.agency.toLowerCase().includes(simSearch.toLowerCase()) ||
-                s.board.toLowerCase().includes(simSearch.toLowerCase()) ||
-                s.code.toLowerCase().includes(simSearch.toLowerCase())
-              )
+              .filter((s) => {
+                const search = (simSearch || '').toLowerCase();
+                return (
+                  (s.title || '').toLowerCase().includes(search) ||
+                  (s.agency || '').toLowerCase().includes(search) ||
+                  (s.board || '').toLowerCase().includes(search) ||
+                  (s.code || '').toLowerCase().includes(search)
+                );
+              })
               .map((sim) => (
                 <div
                   key={sim.id}
@@ -1811,8 +1851,32 @@ export function AdminPortalView({
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="text-xs text-[#64748B] font-medium shrink-0">
-                Total de Alunos: <strong className="text-[#0F172A]">{users.length}</strong>
+              {/* View Switcher: Tabela de E-mails vs Dossiê */}
+              <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setUserViewMode('tabela_emails')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    userViewMode === 'tabela_emails'
+                      ? 'bg-white text-rose-700 shadow-2xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Tabela de E-mails ({users.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserViewMode('cards')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    userViewMode === 'cards'
+                      ? 'bg-white text-rose-700 shadow-2xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Dossiê & Fotos</span>
+                </button>
               </div>
 
               {totalRestrictedUsers > 0 && (
@@ -1822,7 +1886,7 @@ export function AdminPortalView({
                   className="px-3 py-2 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs shrink-0 border border-rose-300"
                 >
                   <Ban className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Desbloquear Restritos ({totalRestrictedUsers})</span>
+                  <span>Desbloquear ({totalRestrictedUsers})</span>
                 </button>
               )}
 
@@ -1837,7 +1901,7 @@ export function AdminPortalView({
                 className="px-3.5 py-2 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs shrink-0"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>Cadastrar Aluno (Com Foto)</span>
+                <span>Cadastrar Aluno</span>
               </button>
             </div>
           </div>
@@ -1945,177 +2009,352 @@ export function AdminPortalView({
           )}
 
           {/* User Cards / Table */}
-          <div className="grid grid-cols-1 gap-3">
-            {users
-              .filter((u) => {
-                if (userStatusFilter !== 'all' && u.status !== userStatusFilter) return false;
-                if (!userSearch) return true;
-                const q = userSearch.toLowerCase();
-                return (
-                  u.name.toLowerCase().includes(q) ||
-                  u.email.toLowerCase().includes(q) ||
-                  u.targetExam.toLowerCase().includes(q)
-                );
-              })
-              .map((u) => (
-                <div
-                  key={u.id}
-                  className={`bg-white rounded-xl border p-4 shadow-2xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                    u.status === 'restrito' 
-                      ? 'border-amber-300 bg-amber-50/20' 
-                      : u.status === 'suspenso'
-                      ? 'border-rose-300 bg-rose-50/20'
-                      : 'border-[#CBD5E1]'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div 
-                      onClick={() => setUserToViewDossier(u)}
-                      title="Clique para ver fotos e carteirinha"
-                      className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[#CBD5E1] shadow-2xs bg-[#0F172A] text-white cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
-                    >
-                      {u.avatarUrl ? (
-                        <img 
-                          src={u.avatarUrl} 
-                          alt={u.name} 
-                          className="w-full h-full object-cover" 
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        u.name.split(' ').map((n) => n[0]).slice(0, 2).join('')
-                      )}
+          {(() => {
+            const filteredUserList = users.filter((u) => {
+              if (userStatusFilter !== 'all' && u.status !== userStatusFilter) return false;
+              if (!userSearch) return true;
+              const q = userSearch.toLowerCase();
+              return (
+                u.name.toLowerCase().includes(q) ||
+                u.email.toLowerCase().includes(q) ||
+                u.targetExam.toLowerCase().includes(q)
+              );
+            });
+
+            if (userViewMode === 'tabela_emails') {
+              return (
+                <div className="bg-white rounded-xl border border-[#CBD5E1] shadow-2xs overflow-hidden">
+                  {/* Table Header with Quick Copy Tool */}
+                  <div className="p-4 bg-slate-50 border-b border-[#CBD5E1] flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                        <Mail className="w-4 h-4 text-blue-600" />
+                        <span>Relação Oficial de Todos os E-mails Cadastrados ({filteredUserList.length})</span>
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Visualize todos os e-mails registrados no sistema, copie endereços e realize exclusões imediatas com segurança.
+                      </p>
                     </div>
-
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => setUserToViewDossier(u)}
-                          className="font-extrabold text-sm text-[#0F172A] hover:text-[#2563EB] text-left transition-colors cursor-pointer"
-                        >
-                          {u.name}
-                        </button>
-                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
-                          u.status === 'ativo'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : u.status === 'pendente_aprovacao'
-                            ? 'bg-amber-100 text-amber-950 border border-amber-300 animate-pulse'
-                            : u.status === 'restrito'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                            : 'bg-rose-100 text-rose-800 border border-rose-300'
-                        }`}>
-                          {u.status === 'pendente_aprovacao' ? '⏳ Aguardando Aprovação' : u.status}
-                        </span>
-                        <div className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded border border-slate-300 transition-colors">
-                          <Shield className="w-3 h-3 text-slate-500" />
-                          <select
-                            value={u.role}
-                            onChange={(e) => handleChangeUserRole(u, e.target.value as ManagedUser['role'])}
-                            className="text-[10px] font-bold bg-transparent text-slate-800 outline-none cursor-pointer"
-                            title="Alterar cargo do usuário com Acesso Total"
-                          >
-                            <option value="aluno">Aluno</option>
-                            <option value="aluno_premium">Aluno Premium</option>
-                            <option value="professor">Professor</option>
-                            <option value="admin">Administrador</option>
-                          </select>
-                        </div>
-                        {u.documentPhotoUrl && (
-                          <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded border border-blue-200">
-                            Doc Anexado
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="text-xs text-[#64748B] flex items-center gap-3 flex-wrap">
-                        <span>{u.email}</span>
-                        <span>•</span>
-                        <span className="font-medium text-[#334155]">Foco: {u.targetExam}</span>
-                      </div>
-
-                      {u.restrictionReason && (
-                        <div className="text-xs text-rose-700 font-medium bg-rose-50 p-2 rounded-lg border border-rose-200 mt-1.5 flex items-center gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
-                          <span><strong>Motivo da restrição:</strong> {u.restrictionReason}</span>
-                        </div>
-                      )}
-
-                      <div className="text-[11px] text-[#94A3B8] pt-1 flex items-center gap-4">
-                        <span>Cadastrado em: {u.registrationDate}</span>
-                        <span>Último acesso: {u.lastActive}</span>
-                        <span className="font-bold text-slate-700 tabular-nums">
-                          {u.questionsAnswered} questões ({u.accuracyRate}% acerto)
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions: Approve/Reject (if pending), View Photos & ID Card, Restrict Access & Delete */}
-                  <div className="flex items-center gap-2 shrink-0 self-end md:self-center flex-wrap">
-                    {u.status === 'pendente_aprovacao' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => handleApproveStudent(u.id)}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Aprovar Matrícula</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRejectStudent(u.id)}
-                          className="px-2.5 py-1.5 rounded-lg border border-rose-300 hover:bg-rose-50 text-rose-700 text-xs font-bold transition-colors cursor-pointer"
-                        >
-                          <span>Rejeitar</span>
-                        </button>
-                      </>
-                    )}
 
                     <button
                       type="button"
-                      onClick={() => setUserToViewDossier(u)}
-                      className="px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 text-xs font-bold text-[#2563EB] flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>Ver Fotos & Carteirinha</span>
-                    </button>
-
-                    <button
                       onClick={() => {
-                        setUserToRestrict(u);
-                        setRestrictionReason(u.restrictionReason || 'Compartilhamento indevido de acesso ou comportamento inadequado.');
+                        const allEmails = filteredUserList.map((u) => u.email).join(', ');
+                        handleCopyEmail(allEmails);
+                        showToast(`${filteredUserList.length} e-mails copiados para a área de transferência!`, 'info');
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
-                        u.status === 'ativo'
-                          ? 'border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100'
-                          : 'border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100'
-                      }`}
+                      className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                     >
-                      {u.status === 'ativo' ? (
-                        <>
-                          <Ban className="w-3.5 h-3.5 text-amber-700" />
-                          <span>Restringir Acesso</span>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>Liberar Acesso</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => setUserToDelete(u)}
-                      className="px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 text-xs font-bold text-red-600 flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Excluir Perfil</span>
+                      <Copy className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Copiar Todos os E-mails</span>
                     </button>
                   </div>
+
+                  {filteredUserList.length === 0 ? (
+                    <div className="p-10 text-center space-y-2">
+                      <Mail className="w-8 h-8 text-slate-300 mx-auto" />
+                      <p className="text-xs font-bold text-slate-700">Nenhum e-mail encontrado com os filtros atuais.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-[#F8FAFC] text-slate-600 font-bold uppercase text-[10px] border-b border-[#E2E8F0]">
+                          <tr>
+                            <th className="py-3 px-4">Aluno / Usuário</th>
+                            <th className="py-3 px-4">E-mail Cadastrado</th>
+                            <th className="py-3 px-4">Papel / Acesso</th>
+                            <th className="py-3 px-4">Concurso-Alvo</th>
+                            <th className="py-3 px-4">Cadastro & Acesso</th>
+                            <th className="py-3 px-4">Status</th>
+                            <th className="py-3 px-4 text-right">Ação / Excluir</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#F1F5F9]">
+                          {filteredUserList.map((u) => {
+                            const isMasterAdmin =
+                              u.email === 'admin@aprovacaototal.com' ||
+                              u.email === 'legongamer0306@gmail.com' ||
+                              u.role === 'admin';
+                            const isCopied = copiedEmail === u.email;
+
+                            return (
+                              <tr key={u.id} className="hover:bg-[#F8FAFC] transition-colors">
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2.5">
+                                    <div 
+                                      onClick={() => setUserToViewDossier(u)}
+                                      className="w-8 h-8 rounded-lg bg-[#0F172A] text-white flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden cursor-pointer border border-slate-200"
+                                    >
+                                      {u.avatarUrl ? (
+                                        <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                      ) : (
+                                        u.name.slice(0, 2).toUpperCase()
+                                      )}
+                                    </div>
+                                    <span className="font-bold text-slate-900">{u.name}</span>
+                                  </div>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                      {u.email}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopyEmail(u.email)}
+                                      title="Copiar este e-mail"
+                                      className={`p-1 rounded transition-colors cursor-pointer ${
+                                        isCopied ? 'bg-emerald-100 text-emerald-700' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-200'
+                                      }`}
+                                    >
+                                      {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                    </button>
+                                  </div>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <select
+                                    value={u.role}
+                                    onChange={(e) => handleChangeUserRole(u, e.target.value as ManagedUser['role'])}
+                                    className="text-[11px] font-bold bg-white text-slate-800 border border-slate-300 rounded px-2 py-1 outline-none cursor-pointer"
+                                  >
+                                    <option value="aluno">Aluno</option>
+                                    <option value="aluno_premium">Aluno Premium</option>
+                                    <option value="professor">Professor</option>
+                                    <option value="admin">Administrador</option>
+                                  </select>
+                                </td>
+
+                                <td className="py-3 px-4 text-slate-600 font-medium">
+                                  {u.targetExam}
+                                </td>
+
+                                <td className="py-3 px-4 text-[11px] text-slate-500 font-mono">
+                                  <div>Cad: {u.registrationDate}</div>
+                                  <div>Último: {u.lastActive}</div>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                                    u.status === 'ativo'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : u.status === 'pendente_aprovacao'
+                                      ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                                      : u.status === 'restrito'
+                                      ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                      : 'bg-rose-100 text-rose-800 border border-rose-300'
+                                  }`}>
+                                    {u.status === 'pendente_aprovacao' ? '⏳ Pendente' : u.status}
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-4 text-right">
+                                  {isMasterAdmin ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 text-slate-500 font-bold text-[10px] border border-slate-200">
+                                      <Lock className="w-3 h-3 text-slate-400" />
+                                      <span>Admin Master</span>
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setUserToDelete(u)}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                      <span>Excluir E-mail</span>
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-              ))}
-          </div>
+              );
+            }
+
+            // Cards view
+            return (
+              <div className="grid grid-cols-1 gap-3">
+                {filteredUserList.map((u) => {
+                  const isMasterAdmin =
+                    u.email === 'admin@aprovacaototal.com' ||
+                    u.email === 'legongamer0306@gmail.com' ||
+                    u.role === 'admin';
+
+                  return (
+                    <div
+                      key={u.id}
+                      className={`bg-white rounded-xl border p-4 shadow-2xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                        u.status === 'restrito' 
+                          ? 'border-amber-300 bg-amber-50/20' 
+                          : u.status === 'suspenso'
+                          ? 'border-rose-300 bg-rose-50/20'
+                          : 'border-[#CBD5E1]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div 
+                          onClick={() => setUserToViewDossier(u)}
+                          title="Clique para ver fotos e carteirinha"
+                          className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden border border-[#CBD5E1] shadow-2xs bg-[#0F172A] text-white cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
+                        >
+                          {u.avatarUrl ? (
+                            <img 
+                              src={u.avatarUrl} 
+                              alt={u.name} 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            u.name.split(' ').map((n) => n[0]).slice(0, 2).join('')
+                          )}
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => setUserToViewDossier(u)}
+                              className="font-extrabold text-sm text-[#0F172A] hover:text-[#2563EB] text-left transition-colors cursor-pointer"
+                            >
+                              {u.name}
+                            </button>
+                            <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                              u.status === 'ativo'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : u.status === 'pendente_aprovacao'
+                                ? 'bg-amber-100 text-amber-950 border border-amber-300 animate-pulse'
+                                : u.status === 'restrito'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                : 'bg-rose-100 text-rose-800 border border-rose-300'
+                            }`}>
+                              {u.status === 'pendente_aprovacao' ? '⏳ Aguardando Aprovação' : u.status}
+                            </span>
+                            <div className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded border border-slate-300 transition-colors">
+                              <Shield className="w-3 h-3 text-slate-500" />
+                              <select
+                                value={u.role}
+                                onChange={(e) => handleChangeUserRole(u, e.target.value as ManagedUser['role'])}
+                                className="text-[10px] font-bold bg-transparent text-slate-800 outline-none cursor-pointer"
+                                title="Alterar cargo do usuário com Acesso Total"
+                              >
+                                <option value="aluno">Aluno</option>
+                                <option value="aluno_premium">Aluno Premium</option>
+                                <option value="professor">Professor</option>
+                                <option value="admin">Administrador</option>
+                              </select>
+                            </div>
+                            {u.documentPhotoUrl && (
+                              <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded border border-blue-200">
+                                Doc Anexado
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-[#64748B] flex items-center gap-3 flex-wrap">
+                            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">{u.email}</span>
+                            <span>•</span>
+                            <span className="font-medium text-[#334155]">Foco: {u.targetExam}</span>
+                          </div>
+
+                          {u.restrictionReason && (
+                            <div className="text-xs text-rose-700 font-medium bg-rose-50 p-2 rounded-lg border border-rose-200 mt-1.5 flex items-center gap-1.5">
+                              <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                              <span><strong>Motivo da restrição:</strong> {u.restrictionReason}</span>
+                            </div>
+                          )}
+
+                          <div className="text-[11px] text-[#94A3B8] pt-1 flex items-center gap-4">
+                            <span>Cadastrado em: {u.registrationDate}</span>
+                            <span>Último acesso: {u.lastActive}</span>
+                            <span className="font-bold text-slate-700 tabular-nums">
+                              {u.questionsAnswered} questões ({u.accuracyRate}% acerto)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions: Approve/Reject (if pending), View Photos & ID Card, Restrict Access & Delete */}
+                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center flex-wrap">
+                        {u.status === 'pendente_aprovacao' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleApproveStudent(u.id)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Aprovar Matrícula</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectStudent(u.id)}
+                              className="px-2.5 py-1.5 rounded-lg border border-rose-300 hover:bg-rose-50 text-rose-700 text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              <span>Rejeitar</span>
+                            </button>
+                          </>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setUserToViewDossier(u)}
+                          className="px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 text-xs font-bold text-[#2563EB] flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          <span>Ver Fotos & Carteirinha</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setUserToRestrict(u);
+                            setRestrictionReason(u.restrictionReason || 'Compartilhamento indevido de acesso ou comportamento inadequado.');
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
+                            u.status === 'ativo'
+                              ? 'border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100'
+                              : 'border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {u.status === 'ativo' ? (
+                            <>
+                              <Ban className="w-3.5 h-3.5 text-amber-700" />
+                              <span>Restringir Acesso</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                              <span>Liberar Acesso</span>
+                            </>
+                          )}
+                        </button>
+
+                        {isMasterAdmin ? (
+                          <span className="px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-xs font-bold flex items-center gap-1 border border-slate-200">
+                            <Lock className="w-3 h-3 text-slate-400" />
+                            <span>Master</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setUserToDelete(u)}
+                            className="px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 text-xs font-bold text-red-600 flex items-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Excluir E-mail</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2641,11 +2880,11 @@ export function AdminPortalView({
               <AlertOctagon className="w-6 h-6" />
             </div>
             <h3 className="font-extrabold text-base text-[#0F172A]">
-              Excluir Perfil de Usuário
+              Excluir E-mail e Conta Cadastrada
             </h3>
             <p className="text-xs text-[#64748B] mt-2 leading-relaxed">
-              Você está prestes a excluir definitivamente o perfil de <strong className="text-[#0F172A]">{userToDelete.name}</strong> ({userToDelete.email}).
-              Todos os dados de desempenho, histórico de simulados e anotações serão desvinculados do sistema.
+              Você está prestes a excluir definitivamente o e-mail <strong className="text-rose-600 font-mono font-bold">{userToDelete.email}</strong> vinculado ao estudante <strong className="text-[#0F172A]">{userToDelete.name}</strong>.
+              O acesso à plataforma será revogado imediatamente e todos os registros associados serão apagados.
             </p>
             <div className="flex items-center justify-end gap-2 mt-6">
               <button
@@ -2658,7 +2897,7 @@ export function AdminPortalView({
                 onClick={handleConfirmDeleteUser}
                 className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-sm"
               >
-                Sim, Excluir Perfil
+                Sim, Excluir E-mail e Conta
               </button>
             </div>
           </div>

@@ -73,8 +73,24 @@ import {
 } from 'lucide-react';
 
 export default function HomePage() {
-  const [currentTab, setCurrentTab] = useState<NavigationTab>('dashboard');
-  const [adminSubTab, setAdminSubTab] = useState<'dashboard' | 'cursos' | 'simulados' | 'sumulas' | 'usuarios' | 'questoes'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<NavigationTab>(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    try {
+      const saved = localStorage.getItem('aprovacao_total_current_tab');
+      if (saved) return saved as NavigationTab;
+    } catch {}
+    return 'dashboard';
+  });
+
+  const [adminSubTab, setAdminSubTab] = useState<'dashboard' | 'cursos' | 'simulados' | 'sumulas' | 'usuarios' | 'questoes'>(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    try {
+      const saved = localStorage.getItem('aprovacao_total_admin_sub_tab');
+      if (saved) return saved as 'dashboard' | 'cursos' | 'simulados' | 'sumulas' | 'usuarios' | 'questoes';
+    } catch {}
+    return 'dashboard';
+  });
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [targets, setTargets] = useState<ExamTarget[]>(() => {
     if (typeof window === 'undefined') return TARGET_EXAMS;
@@ -94,6 +110,11 @@ export default function HomePage() {
   const [currentTarget, setCurrentTarget] = useState<ExamTarget>(() => {
     if (typeof window === 'undefined') return TARGET_EXAMS[0];
     try {
+      const savedSelected = localStorage.getItem('aprovacao_total_selected_target');
+      if (savedSelected) {
+        const parsedTarget: ExamTarget = JSON.parse(savedSelected);
+        if (parsedTarget && parsedTarget.id) return parsedTarget;
+      }
       const saved = localStorage.getItem('aprovacao_total_courses_targets');
       if (saved) {
         const parsed: ExamTarget[] = JSON.parse(saved);
@@ -115,6 +136,13 @@ export default function HomePage() {
   const [questions, setQuestions] = useState<ExamQuestion[]>(() => {
     if (typeof window === 'undefined') return MOCK_QUESTIONS;
     try {
+      const allSaved = localStorage.getItem('aprovacao_total_all_questions');
+      if (allSaved) {
+        const parsedAll: ExamQuestion[] = JSON.parse(allSaved);
+        if (Array.isArray(parsedAll) && parsedAll.length > 0) {
+          return parsedAll;
+        }
+      }
       const saved = localStorage.getItem('aprovacao_total_custom_questions');
       if (saved) {
         const parsed: ExamQuestion[] = JSON.parse(saved);
@@ -133,23 +161,152 @@ export default function HomePage() {
   const [streakDays, setStreakDays] = useState(18);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Student Session State (Active logged-in student)
-  const [currentStudent, setCurrentStudent] = useState<ManagedUser | null>(null);
+  // Student Session State (Active logged-in student - Persisted to prevent session resets)
+  const [currentStudent, setCurrentStudent] = useState<ManagedUser | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_current_student');
+      if (saved) {
+        const parsed: ManagedUser = JSON.parse(saved);
+        if (parsed && parsed.id) return parsed;
+      }
+    } catch (err) {
+      console.error('Falha ao restaurar aluno logado:', err);
+    }
+    return null;
+  });
 
-  // 1. Isolamento de Métricas por Aluno (Multi-tenancy restrito)
-  const [studentPerformances, setStudentPerformances] = useState<Record<string, SubjectPerformance[]>>(STUDENT_PERFORMANCES_MAP);
+  // 1. Isolamento de Métricas por Aluno (Persisted)
+  const [studentPerformances, setStudentPerformances] = useState<Record<string, SubjectPerformance[]>>(() => {
+    if (typeof window === 'undefined') return STUDENT_PERFORMANCES_MAP;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_student_performances');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {}
+    return STUDENT_PERFORMANCES_MAP;
+  });
 
-  // 2. Isolamento de Tarefas / Cronograma por Aluno
-  const [studentTasks, setStudentTasks] = useState<Record<string, DailyTask[]>>(STUDENT_TASKS_MAP);
+  // 2. Isolamento de Tarefas / Cronograma por Aluno (Persisted)
+  const [studentTasks, setStudentTasks] = useState<Record<string, DailyTask[]>>(() => {
+    if (typeof window === 'undefined') return STUDENT_TASKS_MAP;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_student_tasks');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {}
+    return STUDENT_TASKS_MAP;
+  });
 
-  // 3. Isolamento de Ciclo de Estudos por Aluno
-  const [studentCycles, setStudentCycles] = useState<Record<string, CycleDay[]>>(STUDENT_CYCLES_MAP);
+  // 3. Isolamento de Ciclo de Estudos por Aluno (Persisted)
+  const [studentCycles, setStudentCycles] = useState<Record<string, CycleDay[]>>(() => {
+    if (typeof window === 'undefined') return STUDENT_CYCLES_MAP;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_student_cycles');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {}
+    return STUDENT_CYCLES_MAP;
+  });
 
-  // 4. Isolamento de Editais Colados e Verticalizados por Aluno (studentId -> targetId -> CustomSyllabus)
-  const [studentSyllabi, setStudentSyllabi] = useState<Record<string, Record<string, CustomSyllabus>>>(STUDENT_SYLLABI_MAP);
+  // 4. Isolamento de Editais Colados e Verticalizados por Aluno (Persisted)
+  const [studentSyllabi, setStudentSyllabi] = useState<Record<string, Record<string, CustomSyllabus>>>(() => {
+    if (typeof window === 'undefined') return STUDENT_SYLLABI_MAP;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_student_syllabi');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {}
+    return STUDENT_SYLLABI_MAP;
+  });
 
-  // 5. Isolamento de Histórico de Auditoria por Aluno
-  const [studentAuditLogs, setStudentAuditLogs] = useState<Record<string, AuditEntry[]>>(STUDENT_AUDIT_LOGS_MAP);
+  // 5. Isolamento de Histórico de Auditoria por Aluno (Persisted)
+  const [studentAuditLogs, setStudentAuditLogs] = useState<Record<string, AuditEntry[]>>(() => {
+    if (typeof window === 'undefined') return STUDENT_AUDIT_LOGS_MAP;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_student_audit_logs');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {}
+    return STUDENT_AUDIT_LOGS_MAP;
+  });
+
+  // Auto-sync persistent states across page refresh
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_current_tab', currentTab);
+    } catch {}
+  }, [currentTab]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_admin_sub_tab', adminSubTab);
+    } catch {}
+  }, [adminSubTab]);
+
+  useEffect(() => {
+    try {
+      if (currentTarget) {
+        localStorage.setItem('aprovacao_total_selected_target', JSON.stringify(currentTarget));
+      }
+    } catch {}
+  }, [currentTarget]);
+
+  useEffect(() => {
+    try {
+      if (currentStudent) {
+        localStorage.setItem('aprovacao_total_current_student', JSON.stringify(currentStudent));
+      } else {
+        localStorage.removeItem('aprovacao_total_current_student');
+      }
+    } catch {}
+  }, [currentStudent]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_student_performances', JSON.stringify(studentPerformances));
+    } catch {}
+  }, [studentPerformances]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_student_tasks', JSON.stringify(studentTasks));
+    } catch {}
+  }, [studentTasks]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_student_cycles', JSON.stringify(studentCycles));
+    } catch {}
+  }, [studentCycles]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_student_syllabi', JSON.stringify(studentSyllabi));
+    } catch {}
+  }, [studentSyllabi]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_student_audit_logs', JSON.stringify(studentAuditLogs));
+    } catch {}
+  }, [studentAuditLogs]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_all_questions', JSON.stringify(questions));
+    } catch {}
+  }, [questions]);
 
   // Simulados State & Active Exam (Persisted automatically to localStorage)
   const [simulados, setSimulados] = useState<MockExam[]>(() => {
@@ -202,19 +359,70 @@ export default function HomePage() {
     });
   };
 
-  // Legal Items State (Súmulas, Lei Seca, CNJ, Repercussão Geral)
-  const [legalItems, setLegalItems] = useState<LegalItem[]>(DEFAULT_LEGAL_ITEMS_DATA);
-
-  // Users State (Alunos, Permissões, Restrições)
-  const [users, setUsers] = useState<ManagedUser[]>(MOCK_MANAGED_USERS);
-
-  // Admin Session State
-  const [adminSession, setAdminSession] = useState<AdminSession>({
-    isAuthenticated: false,
-    adminEmail: '',
-    adminName: '',
-    role: 'super_admin',
+  // Legal Items State (Súmulas, Lei Seca, CNJ, Repercussão Geral - Persistido)
+  const [legalItems, setLegalItems] = useState<LegalItem[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_LEGAL_ITEMS_DATA;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_legal_items');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return DEFAULT_LEGAL_ITEMS_DATA;
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_legal_items', JSON.stringify(legalItems));
+    } catch {}
+  }, [legalItems]);
+
+  // Users State (Alunos, Permissões, Restrições - Persistido automaticamente)
+  const [users, setUsers] = useState<ManagedUser[]>(() => {
+    if (typeof window === 'undefined') return MOCK_MANAGED_USERS;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_users');
+      if (saved) {
+        const parsed: ManagedUser[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (err) {
+      console.error('Falha ao restaurar usuários persistidos:', err);
+    }
+    return MOCK_MANAGED_USERS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_users', JSON.stringify(users));
+    } catch (err) {
+      console.error('Erro ao sincronizar usuários no localStorage:', err);
+    }
+  }, [users]);
+
+  // Admin Session State (Persisted)
+  const [adminSession, setAdminSession] = useState<AdminSession>(() => {
+    if (typeof window === 'undefined') {
+      return { isAuthenticated: false, adminEmail: '', adminName: '', role: 'super_admin' };
+    }
+    try {
+      const saved = localStorage.getItem('aprovacao_total_admin_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {}
+    return { isAuthenticated: false, adminEmail: '', adminName: '', role: 'super_admin' };
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_admin_session', JSON.stringify(adminSession));
+    } catch {}
+  }, [adminSession]);
 
   // Question Handlers - Salva automaticamente no banco de questões permanente (localStorage e state)
   const handleAddQuestion = (newQuestion: ExamQuestion) => {
@@ -322,6 +530,11 @@ export default function HomePage() {
 
   // User Management Handlers (Excluir perfil e restringir acesso)
   const handleDeleteUser = (userId: string) => {
+    const target = users.find((u) => u.id === userId);
+    if (target && (target.email === 'admin@aprovacaototal.com' || target.email === 'legongamer0306@gmail.com' || target.role === 'admin')) {
+      console.warn('Contas com papel de Administrador Master não podem ser excluídas.');
+      return;
+    }
     setUsers((prev) => prev.filter((u) => u.id !== userId));
     if (currentStudent?.id === userId) {
       setCurrentStudent(null);
@@ -366,10 +579,49 @@ export default function HomePage() {
     if (currentTab === 'admin') {
       setCurrentTab('dashboard');
     }
+
+    // Ensure all per-student data stores exist so nothing is lost upon login
+    setStudentPerformances((prev) => {
+      if (prev[student.id]) return prev;
+      return {
+        ...prev,
+        [student.id]: getInitialStudentPerformance(student.id, student.targetExam || 'Receita Federal'),
+      };
+    });
+    setStudentTasks((prev) => {
+      if (prev[student.id]) return prev;
+      return {
+        ...prev,
+        [student.id]: getInitialStudentTasks(student.id, student.targetExam || 'Receita Federal'),
+      };
+    });
+    setStudentCycles((prev) => {
+      if (prev[student.id]) return prev;
+      return {
+        ...prev,
+        [student.id]: getInitialStudentCycle(student.id, student.targetExam || 'Receita Federal'),
+      };
+    });
+    setStudentAuditLogs((prev) => {
+      if (prev[student.id]) return prev;
+      return {
+        ...prev,
+        [student.id]: getInitialStudentAuditLogs(student.id),
+      };
+    });
+    setStudentSyllabi((prev) => {
+      if (prev[student.id]) return prev;
+      return {
+        ...prev,
+        [student.id]: getInitialStudentSyllabi(student.id),
+      };
+    });
+
+    const studentTarget = (student.targetExam || '').toLowerCase();
     const matching = targets.find((t) => 
-      t.enrolledStudentIds?.includes(student.id) ||
-      t.name.toLowerCase().includes(student.targetExam.toLowerCase()) || 
-      student.targetExam.toLowerCase().includes(t.code.toLowerCase())
+      (t.enrolledStudentIds || []).includes(student.id) ||
+      (studentTarget && (t.name || '').toLowerCase().includes(studentTarget)) || 
+      (studentTarget && (t.code || '').toLowerCase() && studentTarget.includes((t.code || '').toLowerCase()))
     );
     if (matching) {
       setCurrentTarget(matching);
@@ -638,9 +890,42 @@ export default function HomePage() {
     }));
   };
 
-  // PDF Management State
-  const [pdfs, setPdfs] = useState<StudyPDF[]>(MOCK_PDFS);
-  const [subjectClasses, setSubjectClasses] = useState<string[]>(PDF_SUBJECT_CLASSES);
+  // PDF Management State (Persisted in localStorage)
+  const [pdfs, setPdfs] = useState<StudyPDF[]>(() => {
+    if (typeof window === 'undefined') return MOCK_PDFS;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_pdfs');
+      if (saved) {
+        const parsed: StudyPDF[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return MOCK_PDFS;
+  });
+
+  const [subjectClasses, setSubjectClasses] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return PDF_SUBJECT_CLASSES;
+    try {
+      const saved = localStorage.getItem('aprovacao_total_pdf_subject_classes');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return PDF_SUBJECT_CLASSES;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_pdfs', JSON.stringify(pdfs));
+    } catch {}
+  }, [pdfs]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aprovacao_total_pdf_subject_classes', JSON.stringify(subjectClasses));
+    } catch {}
+  }, [subjectClasses]);
 
   const handleAddPdf = (newPdf: StudyPDF) => {
     const stamped: StudyPDF = {
@@ -705,7 +990,22 @@ export default function HomePage() {
 
   const targetWithStudentSyllabus: ExamTarget = {
     ...currentTarget,
-    syllabus: activeSyllabus,
+    name: currentTarget?.name || 'Curso Preparatório Oficial',
+    code: currentTarget?.code || 'CURSO',
+    agency: currentTarget?.agency || 'Comissão Oficial',
+    role: currentTarget?.role || 'Cargo',
+    category: currentTarget?.category || 'Carreiras Gerais',
+    syllabus: activeSyllabus
+      ? {
+          ...activeSyllabus,
+          subjects: Array.isArray(activeSyllabus.subjects) ? activeSyllabus.subjects : [],
+        }
+      : currentTarget?.syllabus
+      ? {
+          ...currentTarget.syllabus,
+          subjects: Array.isArray(currentTarget.syllabus.subjects) ? currentTarget.syllabus.subjects : [],
+        }
+      : undefined,
   };
 
   // Syllabus handler: Salva edital colado vinculado exclusivamente ao perfil ativo

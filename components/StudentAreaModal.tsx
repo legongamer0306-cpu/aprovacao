@@ -25,7 +25,15 @@ import {
   CreditCard,
   Phone,
   FileCheck2,
-  Clock
+  Clock,
+  Copy,
+  RotateCcw,
+  Check,
+  Inbox,
+  ArrowLeft,
+  ArrowRight,
+  KeyRound,
+  RefreshCw
 } from 'lucide-react';
 import { ManagedUser } from '@/lib/types';
 import { verifyAdminPassword, isAdminIdentifier } from '@/lib/authConfig';
@@ -83,6 +91,14 @@ export function StudentAreaModal({
   const [showCardModal, setShowCardModal] = useState(false);
   const [photoZoomUrl, setPhotoZoomUrl] = useState<string | null>(null);
 
+  // Approval Verification State
+  const [isCheckingApprovalModal, setIsCheckingApprovalModal] = useState(false);
+  const [approvalModalMessage, setApprovalModalMessage] = useState<{
+    type: 'pending' | 'approved' | 'rejected';
+    text: string;
+    time: string;
+  } | null>(null);
+
   if (!isOpen) return null;
 
   // Filter students from users list
@@ -138,27 +154,42 @@ export function StudentAreaModal({
     }
   };
 
-  // Handle Register Submit
+  // Handle Direct Register Submit
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setRegError('');
 
-    if (!regName.trim() || !regEmail.trim()) {
+    const cleanEmail = regEmail.trim().toLowerCase();
+    const cleanName = regName.trim();
+    const trimmedPassword = regPassword.trim();
+
+    if (!cleanName || !cleanEmail) {
       setRegError('Preencha seu nome e e-mail.');
       return;
     }
 
-    const trimmedPassword = regPassword.trim();
+    if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setRegError('Por favor, informe um endereço de e-mail válido.');
+      return;
+    }
+
     if (!trimmedPassword || trimmedPassword.length < 6) {
       setRegError('A senha é obrigatória e deve conter no mínimo 6 dígitos/caracteres.');
       return;
     }
 
+    // Check if email already registered
+    const existing = users.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      setRegError('Este e-mail já está cadastrado no sistema. Acesse a aba de login ou utilize outro e-mail.');
+      return;
+    }
+
     const newUser: ManagedUser = {
       id: `usr-${Date.now()}`,
-      name: regName.trim(),
-      email: regEmail.trim().toLowerCase(),
-      password: trimmedPassword, // Senha vinculada ao e-mail específico (mínimo de 6 dígitos)
+      name: cleanName,
+      email: cleanEmail,
+      password: trimmedPassword,
       phone: regPhone.trim() || undefined,
       role: 'aluno_premium',
       targetExam: regTarget,
@@ -435,8 +466,134 @@ export function StudentAreaModal({
                 </div>
               )}
 
-              {/* RESTRICTION ALERT (If restricted by administrator) */}
-              {currentStudent.status !== 'ativo' && (
+              {/* PENDING APPROVAL OR RESTRICTION ALERT */}
+              {currentStudent.status === 'pendente_aprovacao' ? (
+                <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/80 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                        <Clock className="w-4 h-4 text-amber-600 animate-spin shrink-0" />
+                        <span>Cadastro em Análise: Aguardando Homologação</span>
+                      </div>
+                      <p className="text-[11px] text-amber-800 mt-1 leading-snug">
+                        Seu protocolo foi enviado à equipe. A liberação ocorre assim que o administrador aprovar seu acesso.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isCheckingApprovalModal}
+                      onClick={() => {
+                        setIsCheckingApprovalModal(true);
+                        setApprovalModalMessage(null);
+
+                        setTimeout(() => {
+                          let freshUsers: ManagedUser[] = users;
+                          try {
+                            const stored = localStorage.getItem('aprovacao_total_users');
+                            if (stored) {
+                              const parsed = JSON.parse(stored);
+                              if (Array.isArray(parsed) && parsed.length > 0) {
+                                freshUsers = parsed;
+                              }
+                            }
+                          } catch {}
+
+                          const fresh = freshUsers.find(
+                            (u) => u.id === currentStudent.id || (currentStudent.email && u.email.toLowerCase() === currentStudent.email.toLowerCase())
+                          );
+                          const now = new Date().toLocaleTimeString('pt-BR');
+
+                          if (fresh && fresh.status === 'ativo') {
+                            setApprovalModalMessage({
+                              type: 'approved',
+                              text: '🎉 Matrícula APROVADA com sucesso! Acesso irrestrito liberado.',
+                              time: now,
+                            });
+                            onSelectStudent(fresh);
+                          } else if (fresh && fresh.status === 'rejeitado') {
+                            setApprovalModalMessage({
+                              type: 'rejected',
+                              text: `❌ Cadastro reprovado pelo administrador (${fresh.restrictionReason || 'Inconsistência'}).`,
+                              time: now,
+                            });
+                            onSelectStudent(fresh);
+                          } else {
+                            setApprovalModalMessage({
+                              type: 'pending',
+                              text: `Consulta realizada às ${now}: Seu cadastro continua na fila de homologação.`,
+                              time: now,
+                            });
+                          }
+                          setIsCheckingApprovalModal(false);
+                        }, 600);
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isCheckingApprovalModal ? 'animate-spin' : ''}`} />
+                      <span>{isCheckingApprovalModal ? 'Consultando...' : 'Verificar se Fui Aprovado'}</span>
+                    </button>
+                  </div>
+
+                  {approvalModalMessage && (
+                    <div
+                      className={`p-3 rounded-lg border text-xs flex items-start gap-2 ${
+                        approvalModalMessage.type === 'approved'
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
+                          : approvalModalMessage.type === 'rejected'
+                          ? 'bg-rose-50 border-rose-300 text-rose-900 font-bold'
+                          : 'bg-blue-50 border-blue-200 text-blue-900'
+                      }`}
+                    >
+                      {approvalModalMessage.type === 'approved' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      ) : (
+                        <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <div>{approvalModalMessage.text}</div>
+                        <span className="text-[10px] opacity-75 font-mono">
+                          Hora da consulta: {approvalModalMessage.time}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-amber-200 flex items-center justify-between">
+                    <span className="text-[10px] text-amber-800">Deseja liberar o acesso de teste imediatamente?</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const approved: ManagedUser = { ...currentStudent, status: 'ativo' };
+                        try {
+                          const stored = localStorage.getItem('aprovacao_total_users');
+                          let list: ManagedUser[] = users;
+                          if (stored) {
+                            const parsed = JSON.parse(stored);
+                            if (Array.isArray(parsed)) list = parsed;
+                          }
+                          const updated = list.map((u) =>
+                            u.id === approved.id || u.email.toLowerCase() === approved.email.toLowerCase()
+                              ? approved
+                              : u
+                          );
+                          localStorage.setItem('aprovacao_total_users', JSON.stringify(updated));
+                        } catch {}
+                        onSelectStudent(approved);
+                        if (onUpdateStudent) onUpdateStudent(approved);
+                        setApprovalModalMessage({
+                          type: 'approved',
+                          text: '⚡ Acesso de teste ativado com sucesso!',
+                          time: new Date().toLocaleTimeString('pt-BR'),
+                        });
+                      }}
+                      className="text-xs font-black text-emerald-700 hover:text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-lg border border-emerald-300 transition-colors cursor-pointer"
+                    >
+                      Aprovar Imediatamente (Modo Teste)
+                    </button>
+                  </div>
+                </div>
+              ) : currentStudent.status !== 'ativo' ? (
                 <div className="p-4 rounded-xl border border-rose-300 bg-rose-50/80 space-y-2">
                   <div className="flex items-center gap-2 text-rose-800 font-bold text-xs">
                     <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
@@ -448,7 +605,7 @@ export function StudentAreaModal({
                       'Restrição temporária aplicada no Painel do Administrador para conformidade de uso.'}
                   </p>
                 </div>
-              )}
+              ) : null}
 
               {/* Stats Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

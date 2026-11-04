@@ -63,12 +63,14 @@ export function TargetExamModal({
     e.preventDefault();
     if (!newName.trim() || !newRole.trim()) return;
 
+    const targetId = `target-${Date.now()}`;
     const newTarget: ExamTarget = {
-      id: `target-${Date.now()}`,
+      id: targetId,
       name: newName.trim(),
-      code: newCode.trim() || `${newAgency.slice(0, 4).toUpperCase()} 2026`,
+      code: newCode.trim() || `${(newAgency.trim() || 'ALVO').slice(0, 4).toUpperCase()} 2026`,
       agency: newAgency.trim() || 'Comissão Organizadora',
       role: newRole.trim(),
+      category: 'Carreiras Gerais',
       totalSeats: 100,
       salary: newSalary.trim() || 'A definir',
       examDate: newExamDate.trim() || 'A definir',
@@ -78,6 +80,11 @@ export function TargetExamModal({
       isOpenForEnrollment: true,
       enrolledStudentIds: currentStudent ? [currentStudent.id] : [],
       enrolledStudentsCount: 1,
+      syllabus: {
+        id: `syl-${targetId}`,
+        title: `Edital ${newName.trim()}`,
+        subjects: [],
+      },
     };
 
     onAddTarget(newTarget);
@@ -115,11 +122,13 @@ export function TargetExamModal({
       return true;
     }
     // Also match if user's current targetExam matches this course
-    if (currentStudent.targetExam && (
-      currentStudent.targetExam.toLowerCase().includes(exam.code.toLowerCase()) ||
-      exam.name.toLowerCase().includes(currentStudent.targetExam.toLowerCase())
-    )) {
-      return true;
+    if (currentStudent.targetExam) {
+      const studentTarget = currentStudent.targetExam.toLowerCase();
+      const examCode = (exam.code || '').toLowerCase();
+      const examName = (exam.name || '').toLowerCase();
+      if ((examCode && studentTarget.includes(examCode)) || (examName && examName.includes(studentTarget))) {
+        return true;
+      }
     }
     return false;
   };
@@ -135,11 +144,12 @@ export function TargetExamModal({
   };
 
   const filteredTargets = targets.filter((exam) => {
+    const s = (searchFilter || '').toLowerCase();
     const matchesSearch = 
-      exam.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      exam.code.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      exam.agency.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      exam.role.toLowerCase().includes(searchFilter.toLowerCase());
+      (exam.name || '').toLowerCase().includes(s) ||
+      (exam.code || '').toLowerCase().includes(s) ||
+      (exam.agency || '').toLowerCase().includes(s) ||
+      (exam.role || '').toLowerCase().includes(s);
 
     const matchesCategory = 
       categoryFilter === 'all' || 
