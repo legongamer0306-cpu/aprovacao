@@ -765,99 +765,80 @@ export const STUDENT_PERFORMANCES_MAP: Record<string, SubjectPerformance[]> = {
   ],
 };
 
-// Gerador de métricas iniciais para novos alunos cadastrados
-export function getInitialStudentPerformance(studentId: string, targetExam: string): SubjectPerformance[] {
-  if (STUDENT_PERFORMANCES_MAP[studentId]) {
-    return STUDENT_PERFORMANCES_MAP[studentId];
-  }
-  const isJuridico = targetExam.toLowerCase().includes('oab') || targetExam.toLowerCase().includes('magistratura');
-  if (isJuridico) {
-    return [
-      {
-        subject: 'Ética Profissional',
-        questionsAnswered: 0,
-        correctCount: 0,
-        accuracyRate: 0,
-        trend: 'neutral',
-        delta: '0.0%',
-        targetRate: 85.0,
-        status: 'Em Evolução',
-      },
-      {
-        subject: 'Direito Constitucional',
-        questionsAnswered: 0,
-        correctCount: 0,
-        accuracyRate: 0,
-        trend: 'neutral',
-        delta: '0.0%',
-        targetRate: 80.0,
-        status: 'Em Evolução',
-      },
-      {
-        subject: 'Direito Civil',
-        questionsAnswered: 0,
-        correctCount: 0,
-        accuracyRate: 0,
-        trend: 'neutral',
-        delta: '0.0%',
-        targetRate: 75.0,
-        status: 'Em Evolução',
-      },
-      {
-        subject: 'Direito Penal',
-        questionsAnswered: 0,
-        correctCount: 0,
-        accuracyRate: 0,
-        trend: 'neutral',
-        delta: '0.0%',
-        targetRate: 75.0,
-        status: 'Em Evolução',
-      },
-    ];
+// Gera desempenho 100% zerado para novo aluno ou novo curso matriculado
+export function getZeroedPerformanceForCourse(targetCourse?: ExamTarget | string): SubjectPerformance[] {
+  let subjectNames: string[] = [];
+
+  if (targetCourse && typeof targetCourse === 'object' && targetCourse.syllabus?.subjects?.length) {
+    subjectNames = targetCourse.syllabus.subjects.map((s) => s.subject || (s as any).name || 'Disciplina');
+  } else {
+    const courseStr = typeof targetCourse === 'string' ? targetCourse.toLowerCase() : '';
+    if (courseStr.includes('oab') || courseStr.includes('advocacia') || courseStr.includes('magistratura')) {
+      subjectNames = [
+        'Ética e Estatuto da Advocacia',
+        'Direito Constitucional',
+        'Direito Civil & Processo Civil',
+        'Direito Penal & Processo Penal',
+        'Direito Administrativo',
+        'Direito Tributário',
+      ];
+    } else if (courseStr.includes('tcu') || courseStr.includes('controle') || courseStr.includes('auditor fiscal') || courseStr.includes('receita')) {
+      subjectNames = [
+        'Direito Tributário',
+        'Direito Constitucional',
+        'Direito Administrativo',
+        'Contabilidade Geral & Avançada',
+        'Auditoria e Governança Pública',
+        'Legislação Tributária Federal',
+      ];
+    } else if (courseStr.includes('polícia') || courseStr.includes('delegado')) {
+      subjectNames = [
+        'Direito Penal Especial',
+        'Direito Processual Penal',
+        'Direito Constitucional',
+        'Direito Administrativo',
+        'Criminologia & Medicina Legal',
+      ];
+    } else {
+      subjectNames = [
+        'Direito Constitucional',
+        'Direito Administrativo',
+        'Língua Portuguesa',
+        'Raciocínio Lógico & Estatística',
+      ];
+    }
   }
 
-  return [
-    {
-      subject: 'Direito Constitucional',
-      questionsAnswered: 0,
-      correctCount: 0,
-      accuracyRate: 0,
-      trend: 'neutral',
-      delta: '0.0%',
-      targetRate: 80.0,
-      status: 'Em Evolução',
-    },
-    {
-      subject: 'Direito Administrativo',
-      questionsAnswered: 0,
-      correctCount: 0,
-      accuracyRate: 0,
-      trend: 'neutral',
-      delta: '0.0%',
-      targetRate: 80.0,
-      status: 'Em Evolução',
-    },
-    {
-      subject: 'Língua Portuguesa',
-      questionsAnswered: 0,
-      correctCount: 0,
-      accuracyRate: 0,
-      trend: 'neutral',
-      delta: '0.0%',
-      targetRate: 85.0,
-      status: 'Em Evolução',
-    },
-    {
-      subject: 'Raciocínio Lógico & Estatística',
-      questionsAnswered: 0,
-      correctCount: 0,
-      accuracyRate: 0,
-      trend: 'neutral',
-      delta: '0.0%',
-      targetRate: 75.0,
-      status: 'Em Evolução',
-    },
-  ];
+  return subjectNames.map((subj) => ({
+    subject: subj,
+    questionsAnswered: 0,
+    correctCount: 0,
+    accuracyRate: 0,
+    trend: 'neutral',
+    delta: '0.0%',
+    targetRate: 80.0,
+    status: 'Em Evolução',
+  }));
+}
+
+// Gerador de métricas iniciais para alunos cadastrados e cursos
+export function getInitialStudentPerformance(
+  studentId: string, 
+  targetExam?: string, 
+  courseId?: string
+): SubjectPerformance[] {
+  // Apenas as contas demo originais no seu curso original possuem dados pré-populados de exemplo
+  const isDefaultDemoAccount =
+    (studentId === 'usr-1' && (!courseId || courseId === 'tgt-rfb')) ||
+    (studentId === 'usr-2' && (!courseId || courseId === 'tgt-oab')) ||
+    (studentId === 'usr-3' && (!courseId || courseId === 'tgt-tcu'));
+
+  if (isDefaultDemoAccount && STUDENT_PERFORMANCES_MAP[studentId]) {
+    return STUDENT_PERFORMANCES_MAP[studentId];
+  }
+
+  // Qualquer novo aluno ou qualquer matrícula em novo curso começa rigorosamente ZERADO
+  return getZeroedPerformanceForCourse(targetExam);
 }
 
 // Mapeamento isolado de tarefas diárias (Cronograma) por conta de aluno

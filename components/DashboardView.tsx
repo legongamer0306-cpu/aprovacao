@@ -41,7 +41,12 @@ export function DashboardView({
 }: DashboardViewProps) {
   const completedTasks = tasks.filter(t => t.completed).length;
   const totalTasks = tasks.length;
-  const completionPercentage = Math.round((completedTasks / totalTasks) * 100);
+  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const totalQuestions = performances.reduce((acc, p) => acc + (p.questionsAnswered || 0), 0);
+  const totalCorrect = performances.reduce((acc, p) => acc + (p.correctCount || 0), 0);
+  const overallRate = totalQuestions > 0 ? ((totalCorrect / totalQuestions) * 100).toFixed(1) : '0.0';
+  const isZeroState = totalQuestions === 0;
 
   return (
     <div className="space-y-6">
@@ -52,7 +57,7 @@ export function DashboardView({
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
               Foco Prioritário
             </span>
-            <span className="text-xs text-[#64748B] font-medium">Banca Organizadora: FGV</span>
+            <span className="text-xs text-[#64748B] font-medium">Banca Organizadora: {currentTarget.agency || 'Oficial'}</span>
           </div>
           <h1 className="text-xl md:text-2xl font-extrabold text-[#0F172A] tracking-tight">
             {currentTarget.name} — {currentTarget.role}
@@ -108,42 +113,51 @@ export function DashboardView({
         {/* Metric 1: Questões Resolvidas */}
         <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-xs hover:border-[#CBD5E1] transition-all">
           <div className="flex items-center justify-between text-xs text-[#64748B] font-semibold mb-2">
-            <span>Questões Hoje</span>
+            <span>Questões no Curso</span>
             <span className="p-1.5 rounded-md bg-[#EFF6FF] text-[#2563EB]">
               <BookOpen className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl md:text-3xl font-extrabold text-[#0F172A] tabular-nums">
-              35 <span className="text-xs font-medium text-[#64748B]">/ 50 meta</span>
+              {totalQuestions} <span className="text-xs font-medium text-[#64748B]">/ 50 meta</span>
             </span>
-            <span className="inline-flex items-center text-xs font-bold text-[#10B981] bg-[#ECFDF5] px-2 py-0.5 rounded-full">
-              +14% ontem
+            <span className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full ${
+              isZeroState ? 'text-slate-600 bg-slate-100' : 'text-[#10B981] bg-[#ECFDF5]'
+            }`}>
+              {isZeroState ? 'Início de curso' : `${Math.min(100, Math.round((totalQuestions / 50) * 100))}% da meta`}
             </span>
           </div>
           <div className="w-full bg-[#F1F5F9] h-1.5 rounded-full mt-3 overflow-hidden">
-            <div className="bg-[#2563EB] h-full rounded-full" style={{ width: '70%' }} />
+            <div
+              className="bg-[#2563EB] h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.round((totalQuestions / 50) * 100))}%` }}
+            />
           </div>
         </div>
 
         {/* Metric 2: Taxa de Acerto */}
         <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-xs hover:border-[#CBD5E1] transition-all">
           <div className="flex items-center justify-between text-xs text-[#64748B] font-semibold mb-2">
-            <span>Taxa Geral de Acertos</span>
+            <span>Taxa de Acertos no Curso</span>
             <span className="p-1.5 rounded-md bg-[#ECFDF5] text-[#10B981]">
               <Target className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl md:text-3xl font-extrabold text-[#0F172A] tabular-nums">
-              81.4<span className="text-sm font-semibold">%</span>
+              {overallRate}<span className="text-sm font-semibold">%</span>
             </span>
-            <span className="inline-flex items-center text-xs font-bold text-[#10B981] bg-[#ECFDF5] px-2 py-0.5 rounded-full">
+            <span className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full ${
+              isZeroState ? 'text-slate-600 bg-slate-100' : 'text-[#10B981] bg-[#ECFDF5]'
+            }`}>
               Meta: &gt;80%
             </span>
           </div>
           <p className="text-[11px] text-[#64748B] mt-3">
-            +3.2% nos últimos 14 dias de simulados
+            {isZeroState
+              ? 'Nenhuma questão respondida ainda neste curso'
+              : `${totalCorrect} acertos em ${totalQuestions} questões resolvidas`}
           </p>
         </div>
 
@@ -157,14 +171,14 @@ export function DashboardView({
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl md:text-3xl font-extrabold text-[#0F172A] tabular-nums">
-              18 <span className="text-xs font-semibold text-[#64748B]">dias</span>
+              {isZeroState ? 0 : 18} <span className="text-xs font-semibold text-[#64748B]">dias</span>
             </span>
             <span className="inline-flex items-center text-xs font-bold text-[#B45309] bg-[#FEF3C7] px-2 py-0.5 rounded-full">
-              Recorde: 24d
+              {isZeroState ? 'Início do Ciclo' : 'Recorde: 24d'}
             </span>
           </div>
           <p className="text-[11px] text-[#64748B] mt-3">
-            32.4 horas de foco no ciclo corrente
+            {isZeroState ? 'Inicie sua rotina de estudos diária hoje' : '32.4 horas de foco no ciclo corrente'}
           </p>
         </div>
 
@@ -178,7 +192,7 @@ export function DashboardView({
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl md:text-3xl font-extrabold text-[#0F172A] tabular-nums">
-              8 <span className="text-xs font-semibold text-[#64748B]">provas</span>
+              {isZeroState ? 0 : 8} <span className="text-xs font-semibold text-[#64748B]">provas</span>
             </span>
             {onNavigateToSimulados && (
               <button 
@@ -191,7 +205,11 @@ export function DashboardView({
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-[#10B981] mt-3 font-medium">
             <CheckCircle2 className="w-3 h-3" />
-            <span>Média de acertos: 81.4%</span>
+            <span>
+              {isZeroState
+                ? 'Nenhum simulado realizado neste curso'
+                : `Média de acertos: ${overallRate}%`}
+            </span>
           </div>
         </div>
       </div>
@@ -286,20 +304,22 @@ export function DashboardView({
               </span>
             </div>
 
-            <div className="grid grid-cols-7 gap-2">
-              {MOCK_HOURLY_HEATMAP.map((item, i) => (
-                <div key={i} className="flex flex-col items-center gap-1.5 p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
-                  <span className="text-[11px] font-bold text-[#64748B]">{item.day}</span>
-                  <div className="w-full bg-[#E2E8F0] h-12 rounded flex flex-col justify-end p-0.5">
-                    <div 
-                      className="w-full bg-[#2563EB] rounded-xs transition-all"
-                      style={{ height: `${(item.hours / 7) * 100}%` }}
-                    />
+            <div className="overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-[280px]">
+                {MOCK_HOURLY_HEATMAP.map((item, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1 sm:gap-1.5 p-1.5 sm:p-2 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+                    <span className="text-[10px] sm:text-[11px] font-bold text-[#64748B]">{item.day}</span>
+                    <div className="w-full bg-[#E2E8F0] h-10 sm:h-12 rounded flex flex-col justify-end p-0.5">
+                      <div 
+                        className="w-full bg-[#2563EB] rounded-xs transition-all"
+                        style={{ height: `${(item.hours / 7) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-[9px] sm:text-[10px] font-bold text-[#0F172A] tabular-nums">{item.hours}h</span>
+                    <span className="text-[8px] sm:text-[9px] font-semibold text-[#10B981] tabular-nums">{item.accuracy}%</span>
                   </div>
-                  <span className="text-[10px] font-bold text-[#0F172A] tabular-nums">{item.hours}h</span>
-                  <span className="text-[9px] font-semibold text-[#10B981] tabular-nums">{item.accuracy}%</span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>

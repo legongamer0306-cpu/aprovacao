@@ -28,6 +28,7 @@ import {
   MOCK_SUBJECT_PERFORMANCES,
   STUDENT_PERFORMANCES_MAP,
   getInitialStudentPerformance,
+  getZeroedPerformanceForCourse,
   STUDENT_TASKS_MAP,
   getInitialStudentTasks,
   STUDENT_CYCLES_MAP,
@@ -117,6 +118,7 @@ export default function HomePage() {
   const [questionFilterMode, setQuestionFilterMode] = useState<'all' | 'oficial' | 'membros' | 'marcadas' | 'erros'>('all');
   const [studentBookmarkedQuestions, setStudentBookmarkedQuestions] = useState<Record<string, string[]>>(INITIAL_STUDENT_BOOKMARKS);
   const [studentMistakes, setStudentMistakes] = useState<Record<string, Record<string, { count: number; lastMissedAt: string }>>>(INITIAL_STUDENT_MISTAKES);
+  const [studentScratchedQuestions, setStudentScratchedQuestions] = useState<Record<string, string[]>>({});
 
   // Safe client hydration from localStorage on mount (eliminates all SSR hydration mismatches)
   useEffect(() => {
@@ -244,6 +246,12 @@ export default function HomePage() {
         if (savedMistakes) {
           const parsed = JSON.parse(savedMistakes);
           if (parsed && typeof parsed === 'object') setStudentMistakes(parsed);
+        }
+
+        const savedScratched = localStorage.getItem('aprovacao_total_student_scratched_questions');
+        if (savedScratched) {
+          const parsed = JSON.parse(savedScratched);
+          if (parsed && typeof parsed === 'object') setStudentScratchedQuestions(parsed);
         }
       } catch (err) {
         console.error('Falha ao restaurar dados persistidos no cliente:', err);
@@ -410,6 +418,13 @@ export default function HomePage() {
       localStorage.setItem('aprovacao_total_student_mistakes', JSON.stringify(studentMistakes));
     } catch {}
   }, [studentMistakes, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      localStorage.setItem('aprovacao_total_student_scratched_questions', JSON.stringify(studentScratchedQuestions));
+    } catch {}
+  }, [studentScratchedQuestions, isMounted]);
 
   // Question Handlers - Salva automaticamente no banco de questões permanente (localStorage e state)
   const handleAddQuestion = (newQuestion: ExamQuestion) => {
@@ -628,10 +643,15 @@ export default function HomePage() {
       role: 'super_admin',
     });
     setUsers((prev) => [newStudent, ...prev]);
-    // Inicializar métricas exclusivas e isoladas para este novo aluno
+
+    const activeCourseId = currentTarget?.id || 'tgt-rfb';
+    const zeroPerf = getZeroedPerformanceForCourse(currentTarget);
+
+    // Inicializar métricas exclusivas e estritamente ZERADAS para este novo aluno
     setStudentPerformances((prev) => ({
       ...prev,
-      [newStudent.id]: getInitialStudentPerformance(newStudent.id, newStudent.targetExam),
+      [newStudent.id]: zeroPerf,
+      [`${newStudent.id}__${activeCourseId}`]: zeroPerf,
     }));
     // Inicializar cronograma/tarefas isoladas para o novo aluno
     setStudentTasks((prev) => ({
@@ -820,6 +840,17 @@ export default function HomePage() {
         u.id === studentId ? { ...u, targetExam: targetCourse.name } : u
       );
     });
+
+    // Inicializa métricas limpas e zeradas para este aluno neste curso específico
+    const targetCourse = targets.find((t) => t.id === courseId);
+    setStudentPerformances((prev) => {
+      const key = `${studentId}__${courseId}`;
+      if (prev[key]) return prev;
+      return {
+        ...prev,
+        [key]: getZeroedPerformanceForCourse(targetCourse),
+      };
+    });
   };
 
   const handleUnenrollStudentFromCourse = (courseId: string, studentId: string) => {
@@ -855,9 +886,13 @@ export default function HomePage() {
   // Admin user creation: does NOT log out the administrator or reset admin session!
   const handleAdminCreateUser = (newUser: ManagedUser) => {
     setUsers((prev) => [newUser, ...prev]);
+    const activeCourseId = currentTarget?.id || 'tgt-rfb';
+    const zeroPerf = getZeroedPerformanceForCourse(currentTarget);
+
     setStudentPerformances((prev) => ({
       ...prev,
-      [newUser.id]: getInitialStudentPerformance(newUser.id, newUser.targetExam),
+      [newUser.id]: zeroPerf,
+      [`${newUser.id}__${activeCourseId}`]: zeroPerf,
     }));
     setStudentTasks((prev) => ({
       ...prev,
@@ -1051,15 +1086,29 @@ export default function HomePage() {
     ? (studentAuditLogs[currentStudent.id] || getInitialStudentAuditLogs(currentStudent.id))
     : (studentAuditLogs['usr-1'] || []);
 
-  // Isolamento de Questões Marcadas e Caderno de Erros por Aluno
+  // Isolamento de Questões Marcadas, Riscadas e Caderno de Erros por Aluno
   const activeBookmarkedQuestionIds = studentBookmarkedQuestions[activeStudentId] || [];
+  const activeScratchedQuestionIds = studentScratchedQuestions[activeStudentId] || [];
   const activeMistakesMap = studentMistakes[activeStudentId] || {};
   const activeBookmarkedCount = activeBookmarkedQuestionIds.length;
+  const activeScratchedCount = activeScratchedQuestionIds.length;
   const activeMistakesCount = Object.keys(activeMistakesMap).length;
 
   const handleToggleBookmark = (questionId: string) => {
     const studentId = currentStudent?.id || 'usr-1';
     setStudentBookmarkedQuestions((prev) => {
+      const currentList = prev[studentId] || [];
+      const exists = currentList.includes(questionId);
+      const updatedList = exists
+        ? currentList.filter((id) => id !== questionId)
+        : [...currentList, questionId];
+      return { ...prev, [studentId]: updatedList };
+    });
+  };
+
+  const handleToggleScratchQuestion = (questionId: string) => {
+    const studentId = currentStudent?.id || 'usr-1';
+    setStudentScratchedQuestions((prev) => {
       const currentList = prev[studentId] || [];
       const exists = currentList.includes(questionId);
       const updatedList = exists
@@ -1110,10 +1159,17 @@ export default function HomePage() {
   const isUserLoggedIn = Boolean(isStudentLoggedIn || isAdminLoggedIn);
   const pendingApprovalsCount = users.filter((u) => u.status === 'pendente_aprovacao').length;
 
-  // Isolamento de Métricas: Cada conta de aluno visualiza exclusivamente suas próprias estatísticas (Multi-tenancy restrito)
+  // Isolamento de Métricas por Aluno e por Curso:
+  // Um aluno novo (ou matrícula nova num curso) começa com indicadores estritamente em zero.
+  const activeCourseId = currentTarget?.id || 'tgt-rfb';
+  const studentCoursePerfKey = `${activeStudentId}__${activeCourseId}`;
+
   const activePerformances = currentStudent
-    ? (studentPerformances[currentStudent.id] || getInitialStudentPerformance(currentStudent.id, currentStudent.targetExam))
-    : MOCK_SUBJECT_PERFORMANCES;
+    ? (studentPerformances[studentCoursePerfKey] ||
+       (activeCourseId === 'tgt-rfb' ? studentPerformances[currentStudent.id] : undefined) ||
+       getInitialStudentPerformance(currentStudent.id, currentTarget?.name, activeCourseId))
+    : (studentPerformances[`usr-1__${activeCourseId}`] ||
+       (activeCourseId === 'tgt-rfb' ? MOCK_SUBJECT_PERFORMANCES : getZeroedPerformanceForCourse(currentTarget)));
 
   // Isolamento de PDFs: Alunos visualizam exclusivamente os seus próprios PDFs (um não vê o material do outro)
   const activePdfs = isAdminLoggedIn 
@@ -1349,6 +1405,8 @@ export default function HomePage() {
                     initialSubjectFilter={subjectFilterForQuestions}
                     initialMode={questionFilterMode}
                     bookmarkedQuestionIds={activeBookmarkedQuestionIds}
+                    scratchedQuestionIds={activeScratchedQuestionIds}
+                    onToggleScratchQuestion={handleToggleScratchQuestion}
                     mistakesMap={activeMistakesMap}
                     onBookmarkToggle={handleToggleBookmark}
                     onRemoveMistake={handleRemoveMistake}
@@ -1395,10 +1453,13 @@ export default function HomePage() {
                         [currentStudent.id]: [auditEntry, ...(prev[currentStudent.id] || [])],
                       }));
 
-                      // Atualizar métricas isoladas por matéria do aluno logado (um não afeta o outro)
+                      // Atualizar métricas isoladas por matéria do aluno logado e por curso (um não afeta o outro)
+                      const courseId = currentTarget?.id || 'tgt-rfb';
+                      const compositeKey = `${currentStudent.id}__${courseId}`;
+
                       setStudentPerformances((prev) => {
                         const studentId = currentStudent.id;
-                        const list = prev[studentId] || getInitialStudentPerformance(studentId, currentStudent.targetExam);
+                        const list = prev[compositeKey] || prev[studentId] || getInitialStudentPerformance(studentId, currentTarget?.name, courseId);
                         let matched = false;
                         const updatedList = list.map((item) => {
                           const isMatch =
@@ -1436,7 +1497,11 @@ export default function HomePage() {
                           });
                         }
 
-                        return { ...prev, [studentId]: updatedList };
+                        return { 
+                          ...prev, 
+                          [compositeKey]: updatedList,
+                          [studentId]: updatedList 
+                        };
                       });
                     }}
                     onAddQuestion={handleAddQuestion}
@@ -1592,6 +1657,8 @@ export default function HomePage() {
           exam={activeRunningExam}
           currentStudent={currentStudent}
           rankings={mockRankings}
+          scratchedQuestionIds={activeScratchedQuestionIds}
+          onToggleScratchQuestion={handleToggleScratchQuestion}
           onRecordRankingEntry={handleRecordRankingEntry}
           onRecordMistake={handleRecordMistake}
           onFinishExam={(examId, score, correctCount, timeSpentSec) => {

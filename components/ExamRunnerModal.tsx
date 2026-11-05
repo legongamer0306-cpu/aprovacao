@@ -18,7 +18,9 @@ import {
   Trophy,
   Medal,
   Users,
-  Sparkles
+  Sparkles,
+  Scissors,
+  SkipForward
 } from 'lucide-react';
 import { MockExam, ExamQuestion, ManagedUser, MockExamRankingEntry } from '@/lib/types';
 
@@ -28,9 +30,11 @@ interface ExamRunnerModalProps {
   exam: MockExam;
   currentStudent?: ManagedUser | null;
   rankings?: MockExamRankingEntry[];
+  scratchedQuestionIds?: string[];
   onRecordRankingEntry?: (entry: MockExamRankingEntry) => void;
   onFinishExam: (examId: string, score: number, correctCount: number, timeSpentSec: number, pointsEarned?: number, totalPointsPossible?: number) => void;
   onRecordMistake?: (questionId: string) => void;
+  onToggleScratchQuestion?: (questionId: string) => void;
 }
 
 export function ExamRunnerModal({
@@ -39,12 +43,15 @@ export function ExamRunnerModal({
   exam,
   currentStudent,
   rankings = [],
+  scratchedQuestionIds = [],
   onRecordRankingEntry,
   onFinishExam,
   onRecordMistake,
+  onToggleScratchQuestion,
 }: ExamRunnerModalProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [eliminatedOptions, setEliminatedOptions] = useState<Record<string, boolean>>({});
   const [secondsRemaining, setSecondsRemaining] = useState(exam.durationMinutes * 60);
   const [isFinished, setIsFinished] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
@@ -132,6 +139,29 @@ export function ExamRunnerModal({
       ...prev,
       [currentQ.id]: optId,
     }));
+  };
+
+  const toggleEliminateOption = (e: React.MouseEvent, questionId: string, optionId: string) => {
+    e.stopPropagation();
+    const key = `${questionId}__${optionId}`;
+    setEliminatedOptions((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const handleSkipQuestion = () => {
+    if (exam.questions.length <= 1) return;
+    if (currentQuestionIndex < exam.questions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+    } else {
+      const firstUnanswered = exam.questions.findIndex(
+        (q, i) => i !== currentQuestionIndex && !selectedAnswers[q.id]
+      );
+      if (firstUnanswered !== -1) {
+        setCurrentQuestionIndex(firstUnanswered);
+      }
+    }
   };
 
   const formatTime = (totalSeconds: number) => {
@@ -385,9 +415,9 @@ export function ExamRunnerModal({
           /* Live Solver Area */
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
             {/* Left: Question Stem & Options */}
-            <div className="flex-1 p-6 md:p-8 overflow-y-auto space-y-6">
-              <div className="flex items-center justify-between pb-3 border-b border-[#E2E8F0]">
-                <div className="flex items-center gap-2">
+            <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto space-y-5 bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#E2E8F0]">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE]">
                     {currentQ.subject}
                   </span>
@@ -395,46 +425,85 @@ export function ExamRunnerModal({
                     {currentQ.topic}
                   </span>
                 </div>
-                <span className="text-xs font-bold text-[#0F172A] tabular-nums">
-                  Questão {currentQuestionIndex + 1} de {exam.questions.length}
-                </span>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-slate-500 hidden sm:inline-flex items-center gap-1">
+                    <Scissors className="w-3 h-3 text-slate-400" />
+                    <span>Dica: Risque opções para ir por exclusão</span>
+                  </span>
+                  <span className="text-xs font-bold text-[#0F172A] tabular-nums bg-slate-100 px-2 py-0.5 rounded-md">
+                    Questão {currentQuestionIndex + 1} de {exam.questions.length}
+                  </span>
+                </div>
               </div>
 
               {/* Statement */}
-              <div className="text-sm md:text-base text-[#0F172A] leading-relaxed whitespace-pre-line">
+              <div className="text-sm md:text-base leading-relaxed whitespace-pre-line text-[#0F172A]">
                 {currentQ.statement}
               </div>
 
-              {/* 5 Options */}
+              {/* 5 Options com opção de riscar alternativa para ir por exclusão */}
               <div className="space-y-3 pt-2">
                 {currentQ.options.map((opt) => {
                   const isSelected = selectedAnswers[currentQ.id] === opt.id;
+                  const optKey = `${currentQ.id}__${opt.id}`;
+                  const isOptScratched = Boolean(eliminatedOptions[optKey]);
 
                   return (
                     <div
                       key={opt.id}
-                      onClick={() => handleSelectOption(opt.id)}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${
-                        isSelected
+                      onClick={() => {
+                        if (isOptScratched) {
+                          toggleEliminateOption({ stopPropagation: () => {} } as any, currentQ.id, opt.id);
+                          handleSelectOption(opt.id);
+                        } else {
+                          handleSelectOption(opt.id);
+                        }
+                      }}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 relative group ${
+                        isOptScratched
+                          ? 'border-dashed border-rose-300 bg-rose-50/20'
+                          : isSelected
                           ? 'border-[#2563EB] bg-[#EFF6FF] ring-1 ring-[#2563EB]/40'
                           : 'border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-[#F8FAFC]'
                       }`}
                     >
                       <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${
-                        isSelected ? 'bg-[#2563EB] text-white' : 'bg-[#F1F5F9] text-[#475569]'
+                        isOptScratched
+                          ? 'bg-rose-100 text-rose-500 line-through'
+                          : isSelected
+                          ? 'bg-[#2563EB] text-white'
+                          : 'bg-[#F1F5F9] text-[#475569]'
                       }`}>
                         {opt.label}
                       </span>
-                      <span className="text-xs md:text-sm text-[#1E293B] leading-relaxed pt-0.5">
+                      <span className={`flex-1 text-xs md:text-sm leading-relaxed pt-0.5 ${
+                        isOptScratched ? 'line-through text-slate-400 select-none' : 'text-[#1E293B]'
+                      }`}>
                         {opt.text}
                       </span>
+
+                      {/* Botão Riscar Alternativa (Eliminar por Exclusão) */}
+                      <button
+                        type="button"
+                        onClick={(e) => toggleEliminateOption(e, currentQ.id, opt.id)}
+                        title={isOptScratched ? 'Restaurar alternativa (desriscar)' : 'Riscar alternativa que você acha errada (eliminar por exclusão)'}
+                        className={`px-2 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                          isOptScratched
+                            ? 'bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-300 shadow-2xs'
+                            : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                      >
+                        <Scissors className={`w-3.5 h-3.5 ${isOptScratched ? 'text-rose-600 rotate-90' : 'text-slate-400'}`} />
+                        <span>{isOptScratched ? 'Riscada' : 'Riscar'}</span>
+                      </button>
                     </div>
                   );
                 })}
               </div>
 
               {/* Navigation Footer */}
-              <div className="pt-6 border-t border-[#E2E8F0] flex items-center justify-between">
+              <div className="pt-6 border-t border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
                 <button
                   disabled={currentQuestionIndex === 0}
                   onClick={() => setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))}
@@ -443,14 +512,27 @@ export function ExamRunnerModal({
                   <ChevronLeft className="w-4 h-4" /> Anterior
                 </button>
 
-                <div className="text-xs text-[#64748B] font-medium">
-                  {selectedAnswers[currentQ.id] ? (
-                    <span className="text-emerald-600 font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Alternativa Marcada
-                    </span>
-                  ) : (
-                    <span className="text-amber-600 font-bold">Pendente de Resposta</span>
-                  )}
+                <div className="flex items-center gap-2">
+                  {/* Botão Pular Questão no Simulado */}
+                  <button
+                    type="button"
+                    onClick={handleSkipQuestion}
+                    title="Pular esta questão sem responder. Você poderá retornar a ela a qualquer momento."
+                    className="px-3.5 py-2 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <SkipForward className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Pular Questão</span>
+                  </button>
+
+                  <div className="text-xs text-[#64748B] font-medium hidden sm:block">
+                    {selectedAnswers[currentQ.id] ? (
+                      <span className="text-emerald-600 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Marcada
+                      </span>
+                    ) : (
+                      <span className="text-amber-600 font-bold">Pendente</span>
+                    )}
+                  </div>
                 </div>
 
                 <button
@@ -489,6 +571,7 @@ export function ExamRunnerModal({
                             ? 'bg-[#2563EB] text-white'
                             : 'bg-white border border-[#CBD5E1] text-[#64748B] hover:border-[#94A3B8]'
                         }`}
+                        title={`Questão ${idx + 1}`}
                       >
                         {idx + 1}
                       </button>
@@ -505,6 +588,10 @@ export function ExamRunnerModal({
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded bg-white border border-[#CBD5E1]" />
                   <span>Em branco</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded bg-rose-50 border border-rose-300" />
+                  <span>Riscada / Inadequada</span>
                 </div>
               </div>
             </div>

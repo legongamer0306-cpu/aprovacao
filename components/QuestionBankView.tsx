@@ -18,12 +18,17 @@ import {
   Eye, 
   Sparkles, 
   Zap, 
-  ArrowRight,
-  Users,
-  BrainCircuit,
-  Plus,
-  Trash2,
-  AlertCircle
+  ArrowRight, 
+  Users, 
+  BrainCircuit, 
+  Plus, 
+  Trash2, 
+  AlertCircle,
+  Search,
+  X,
+  Scissors,
+  SkipForward,
+  Building2
 } from 'lucide-react';
 import { ExamQuestion } from '@/lib/types';
 import { MemberQuestionModal } from '@/components/MemberQuestionModal';
@@ -36,9 +41,11 @@ interface QuestionBankViewProps {
   initialMode?: QuestionOriginSubgroup;
   bookmarkedQuestionIds?: string[];
   mistakesMap?: Record<string, { count: number; lastMissedAt: string }>;
+  scratchedQuestionIds?: string[];
   onBookmarkToggle?: (questionId: string) => void;
   onRecordAnswer?: (questionId: string, isCorrect: boolean) => void;
   onRemoveMistake?: (questionId: string) => void;
+  onToggleScratchQuestion?: (questionId: string) => void;
   onAddQuestion?: (question: ExamQuestion) => void;
   onDeleteQuestion?: (questionId: string) => void;
 }
@@ -49,15 +56,20 @@ export function QuestionBankView({
   initialMode,
   bookmarkedQuestionIds = [],
   mistakesMap = {},
+  scratchedQuestionIds = [],
   onBookmarkToggle,
   onRecordAnswer,
   onRemoveMistake,
+  onToggleScratchQuestion,
   onAddQuestion,
   onDeleteQuestion,
 }: QuestionBankViewProps) {
   const [selectedSubgroup, setSelectedSubgroup] = useState<QuestionOriginSubgroup>(initialMode || 'all');
   const [selectedSubject, setSelectedSubject] = useState<string>(initialSubjectFilter || 'all');
+  const [selectedBoard, setSelectedBoard] = useState<string>('all');
+  const [selectedTopic, setSelectedTopic] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [verifiedMap, setVerifiedMap] = useState<Record<string, boolean>>({});
@@ -85,7 +97,28 @@ export function QuestionBankView({
     setCurrentIndex(0);
   }
 
-  // Filter questions by Subgroup (Todas, Oficiais, Membros, Marcadas, Erros), Subject and Difficulty
+  // Helper to extract question board/banca robustly
+  const getQuestionBoard = (q: ExamQuestion) => (q.board || q.banca || '').trim();
+
+  // Extract unique boards dynamically
+  const uniqueBoards = Array.from(
+    new Set(questions.map((q) => getQuestionBoard(q)).filter(Boolean))
+  ).sort();
+
+  // Extract unique subjects
+  const subjects = ['all', ...Array.from(new Set(questions.map((q) => q.subject)))];
+
+  // Extract unique topics for the selected subject (or across all)
+  const availableTopics = Array.from(
+    new Set(
+      questions
+        .filter((q) => selectedSubject === 'all' || q.subject.toLowerCase() === selectedSubject.toLowerCase())
+        .map((q) => q.topic)
+        .filter(Boolean)
+    )
+  ).sort();
+
+  // Filter questions combining Subgroup, Banca, Subject, Assunto, Difficulty, Search Query
   let filteredQuestions = questions.filter((q) => {
     // Subgroup filter
     if (selectedSubgroup === 'membros' && q.origin !== 'membros') return false;
@@ -93,14 +126,53 @@ export function QuestionBankView({
     if (selectedSubgroup === 'marcadas' && !bookmarkedQuestionIds.includes(q.id)) return false;
     if (selectedSubgroup === 'erros' && !mistakesMap[q.id]) return false;
 
-    // Subject filter
+    // Board / Banca filter (ex: FGV, Cebraspe, FCC, etc.)
+    if (selectedBoard !== 'all') {
+      const qBoard = getQuestionBoard(q).toLowerCase();
+      const targetBoard = selectedBoard.toLowerCase();
+      if (!qBoard.includes(targetBoard) && !targetBoard.includes(qBoard)) {
+        return false;
+      }
+    }
+
+    // Subject filter (Matéria / Disciplina)
     if (selectedSubject !== 'all' && !q.subject.toLowerCase().includes(selectedSubject.toLowerCase())) {
       return false;
     }
+
+    // Topic filter (Assunto)
+    if (selectedTopic !== 'all' && q.topic.toLowerCase() !== selectedTopic.toLowerCase()) {
+      return false;
+    }
+
     // Difficulty filter
     if (selectedDifficulty !== 'all' && q.difficulty !== selectedDifficulty) {
       return false;
     }
+
+    // Search query filter (combina busca por banca, matéria, assunto, enunciado ou código)
+    if (searchQuery.trim()) {
+      const term = searchQuery.trim().toLowerCase();
+      const qBoard = getQuestionBoard(q).toLowerCase();
+      const qSubject = (q.subject || '').toLowerCase();
+      const qTopic = (q.topic || '').toLowerCase();
+      const qCode = (q.code || '').toLowerCase();
+      const qStatement = (q.statement || '').toLowerCase();
+      const qAgency = (q.agency || '').toLowerCase();
+      const qLegal = (q.legalBasis || '').toLowerCase();
+
+      const matches =
+        qBoard.includes(term) ||
+        qSubject.includes(term) ||
+        qTopic.includes(term) ||
+        qCode.includes(term) ||
+        qStatement.includes(term) ||
+        qAgency.includes(term) ||
+        qLegal.includes(term);
+
+      if (!matches) return false;
+    }
+
     return true;
   });
 
@@ -130,6 +202,15 @@ export function QuestionBankView({
     onRecordAnswer?.(activeQuestion.id, isCorrect);
   };
 
+  // Pular questão: avança sem registrar resposta, acerto ou erro, e sem afetar desempenho
+  const handleSkipQuestion = () => {
+    if (filteredQuestions.length <= 1) return;
+    const nextIndex = (currentIndex + 1) % filteredQuestions.length;
+    setCurrentIndex(nextIndex);
+    setShowExplanation(false);
+    setSavedToastMessage('Questão pulada. Você poderá retornar a ela a qualquer momento.');
+  };
+
   const handleResetQuestion = () => {
     if (!activeQuestion) return;
     setSelectedAnswers((prev) => {
@@ -143,7 +224,13 @@ export function QuestionBankView({
       return copy;
     });
     setShowExplanation(false);
-    setEliminatedOptions({});
+    setEliminatedOptions((prev) => {
+      const copy = { ...prev };
+      activeQuestion.options.forEach((opt) => {
+        delete copy[`${activeQuestion.id}__${opt.id}`];
+      });
+      return copy;
+    });
   };
 
   const toggleBookmark = () => {
@@ -158,18 +245,17 @@ export function QuestionBankView({
 
   const toggleEliminate = (e: React.MouseEvent, optionId: string) => {
     e.stopPropagation();
+    if (!activeQuestion) return;
+    const key = `${activeQuestion.id}__${optionId}`;
     setEliminatedOptions((prev) => ({
       ...prev,
-      [optionId]: !prev[optionId],
+      [key]: !prev[key],
     }));
   };
 
   const isVerified = activeQuestion ? verifiedMap[activeQuestion.id] : false;
   const userChoice = activeQuestion ? selectedAnswers[activeQuestion.id] : undefined;
   const isCorrectChoice = activeQuestion ? userChoice === activeQuestion.correctOptionId : false;
-
-  // Extract unique subjects
-  const subjects = ['all', ...Array.from(new Set(questions.map((q) => q.subject)))];
 
   const fontSizeClass = {
     sm: 'text-xs leading-relaxed',
@@ -183,6 +269,22 @@ export function QuestionBankView({
   const memberCount = questions.filter(q => q.origin === 'membros').length;
   const markedCount = questions.filter(q => bookmarkedQuestionIds.includes(q.id)).length;
   const mistakesCount = questions.filter(q => Boolean(mistakesMap[q.id])).length;
+
+  const isAnyFilterActive =
+    selectedBoard !== 'all' ||
+    selectedSubject !== 'all' ||
+    selectedTopic !== 'all' ||
+    selectedDifficulty !== 'all' ||
+    searchQuery.trim().length > 0;
+
+  const handleClearAllFilters = () => {
+    setSelectedBoard('all');
+    setSelectedSubject('all');
+    setSelectedTopic('all');
+    setSelectedDifficulty('all');
+    setSearchQuery('');
+    setCurrentIndex(0);
+  };
 
   return (
     <div className="space-y-4">
@@ -202,8 +304,8 @@ export function QuestionBankView({
       )}
 
       {/* Subgroup Navigation Banner & Quick Actions */}
-      <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        {/* Subgroups: Todas, Oficiais, Membros, Marcadas, Erros */}
+      <div className="bg-white border border-[#E2E8F0] rounded-xl p-3 sm:p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        {/* Subgroups: Todas, Oficiais, Membros, Marcadas, Erros, Riscadas */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
           <button
             onClick={() => {
@@ -282,7 +384,7 @@ export function QuestionBankView({
             }`}
           >
             <Bookmark className={`w-3.5 h-3.5 ${selectedSubgroup === 'marcadas' ? 'fill-white' : 'fill-amber-500 text-amber-500'}`} />
-            <span>Questões Marcadas</span>
+            <span>Marcadas</span>
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums font-bold ${
               selectedSubgroup === 'marcadas' ? 'bg-white/25 text-white' : 'bg-amber-200 text-amber-900'
             }`}>
@@ -317,123 +419,220 @@ export function QuestionBankView({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsMemberModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#10B981] hover:bg-[#059669] text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#10B981] hover:bg-[#059669] text-white font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
-            Nova Questão (Membro)
+            <span className="hidden sm:inline">Nova Questão (Membro)</span>
+            <span className="sm:hidden">Criar Questão</span>
           </button>
         </div>
       </div>
 
-      {/* Filters & Zen Toolbar */}
-      <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Subject selector */}
-          <select
-            value={selectedSubject}
-            onChange={(e) => {
-              setSelectedSubject(e.target.value);
-              setCurrentIndex(0);
-            }}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] focus:border-[#2563EB] outline-none cursor-pointer"
-          >
-            <option value="all">Todas as Disciplinas</option>
-            {subjects.filter((s) => s !== 'all').map((subj) => (
-              <option key={subj} value={subj}>
-                {subj}
-              </option>
-            ))}
-          </select>
-
-          {/* Difficulty filter */}
-          <div className="hidden sm:flex items-center rounded-lg border border-[#CBD5E1] p-0.5 bg-[#F8FAFC]">
-            {(['all', 'Fácil', 'Média', 'Difícil'] as const).map((diff) => (
+      {/* Search & Filters Toolbar */}
+      <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 shadow-2xs space-y-3">
+        {/* Top Line: Search Input with dedicated search button */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="relative flex-1 flex items-center">
+            <Search className="w-4 h-4 text-[#64748B] absolute left-3 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentIndex(0);
+              }}
+              placeholder="Pesquisar por banca (ex: FGV, Cebraspe), matéria, assunto, enunciado ou código..."
+              className="w-full text-xs font-medium pl-9 pr-8 py-2 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] placeholder-[#94A3B8] focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none"
+            />
+            {searchQuery && (
               <button
-                key={diff}
+                type="button"
                 onClick={() => {
-                  setSelectedDifficulty(diff);
+                  setSearchQuery('');
                   setCurrentIndex(0);
                 }}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
-                  selectedDifficulty === diff
-                    ? 'bg-white text-[#0F172A] shadow-2xs'
-                    : 'text-[#64748B] hover:text-[#0F172A]'
-                }`}
+                className="absolute right-2.5 p-1 text-[#94A3B8] hover:text-[#0F172A] cursor-pointer"
+                title="Limpar termo"
               >
-                {diff === 'all' ? 'Todas' : diff}
+                <X className="w-3.5 h-3.5" />
               </button>
-            ))}
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setCurrentIndex(0)}
+              className="px-4 py-2 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Pesquisar</span>
+            </button>
+
+            {isAnyFilterActive && (
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className="px-3 py-2 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] text-[#64748B] hover:text-[#0F172A] font-semibold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                title="Redefinir todos os filtros de busca"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span className="hidden sm:inline">Limpar Filtros</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Question Counter & Font Size Adjuster */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center border border-[#CBD5E1] rounded-lg bg-[#F8FAFC] p-0.5 text-xs font-semibold">
-            <button
-              onClick={() => setFontSize('sm')}
-              className={`px-2 py-0.5 rounded ${fontSize === 'sm' ? 'bg-white shadow-2xs text-[#0F172A]' : 'text-[#64748B]'}`}
-              title="Texto menor"
+        {/* Bottom Line: Filters and Zen controls */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-[#F1F5F9]">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            {/* Banca filter dropdown */}
+            <div className="flex items-center gap-1 text-xs">
+              <Building2 className="w-3.5 h-3.5 text-[#64748B] hidden sm:block shrink-0" />
+              <select
+                value={selectedBoard}
+                onChange={(e) => {
+                  setSelectedBoard(e.target.value);
+                  setCurrentIndex(0);
+                }}
+                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] focus:border-[#2563EB] outline-none cursor-pointer max-w-[150px] truncate"
+                title="Filtrar por banca examinadora"
+              >
+                <option value="all">Todas as Bancas</option>
+                {uniqueBoards.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subject selector */}
+            <select
+              value={selectedSubject}
+              onChange={(e) => {
+                setSelectedSubject(e.target.value);
+                setSelectedTopic('all');
+                setCurrentIndex(0);
+              }}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] focus:border-[#2563EB] outline-none cursor-pointer max-w-[170px] truncate"
+              title="Filtrar por disciplina"
             >
-              A-
-            </button>
-            <button
-              onClick={() => setFontSize('md')}
-              className={`px-2 py-0.5 rounded ${fontSize === 'md' ? 'bg-white shadow-2xs text-[#0F172A]' : 'text-[#64748B]'}`}
-              title="Texto padrão"
+              <option value="all">Todas as Disciplinas</option>
+              {subjects.filter((s) => s !== 'all').map((subj) => (
+                <option key={subj} value={subj}>
+                  {subj}
+                </option>
+              ))}
+            </select>
+
+            {/* Topic / Assunto selector */}
+            <select
+              value={selectedTopic}
+              onChange={(e) => {
+                setSelectedTopic(e.target.value);
+                setCurrentIndex(0);
+              }}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] focus:border-[#2563EB] outline-none cursor-pointer max-w-[170px] truncate"
+              title="Filtrar por assunto específico"
             >
-              A
-            </button>
-            <button
-              onClick={() => setFontSize('lg')}
-              className={`px-2 py-0.5 rounded ${fontSize === 'lg' ? 'bg-white shadow-2xs text-[#0F172A]' : 'text-[#64748B]'}`}
-              title="Texto ampliado"
+              <option value="all">Todos os Assuntos</option>
+              {availableTopics.map((topic) => (
+                <option key={topic} value={topic}>
+                  {topic}
+                </option>
+              ))}
+            </select>
+
+            {/* Difficulty filter */}
+            <select
+              value={selectedDifficulty}
+              onChange={(e) => {
+                setSelectedDifficulty(e.target.value);
+                setCurrentIndex(0);
+              }}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] focus:border-[#2563EB] outline-none cursor-pointer"
+              title="Filtrar por dificuldade"
             >
-              A+
-            </button>
+              <option value="all">Dificuldade: Todas</option>
+              <option value="Fácil">Fácil</option>
+              <option value="Média">Média</option>
+              <option value="Difícil">Difícil</option>
+            </select>
           </div>
 
-          <div className="text-xs font-bold text-[#0F172A] px-2.5 py-1 bg-[#F1F5F9] rounded-lg tabular-nums">
-            {currentIndex + 1} de {filteredQuestions.length}
-          </div>
+          {/* Question Counter & Controls */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Font Size Adjuster */}
+            <div className="flex items-center border border-[#CBD5E1] rounded-lg bg-[#F8FAFC] p-0.5 text-xs font-semibold">
+              <button
+                onClick={() => setFontSize('sm')}
+                className={`px-2 py-0.5 rounded ${fontSize === 'sm' ? 'bg-white shadow-2xs text-[#0F172A]' : 'text-[#64748B]'}`}
+                title="Texto menor"
+              >
+                A-
+              </button>
+              <button
+                onClick={() => setFontSize('md')}
+                className={`px-2 py-0.5 rounded ${fontSize === 'md' ? 'bg-white shadow-2xs text-[#0F172A]' : 'text-[#64748B]'}`}
+                title="Texto padrão"
+              >
+                A
+              </button>
+              <button
+                onClick={() => setFontSize('lg')}
+                className={`px-2 py-0.5 rounded ${fontSize === 'lg' ? 'bg-white shadow-2xs text-[#0F172A]' : 'text-[#64748B]'}`}
+                title="Texto ampliado"
+              >
+                A+
+              </button>
+            </div>
 
-          {/* Navigation Controls */}
-          <div className="flex items-center gap-1">
-            <button
-              disabled={currentIndex === 0}
-              onClick={() => {
-                setCurrentIndex((prev) => Math.max(0, prev - 1));
-                setShowExplanation(false);
-              }}
-              className="p-1.5 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] disabled:opacity-40 disabled:cursor-not-allowed text-[#0F172A]"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              disabled={currentIndex >= filteredQuestions.length - 1}
-              onClick={() => {
-                setCurrentIndex((prev) => Math.min(filteredQuestions.length - 1, prev + 1));
-                setShowExplanation(false);
-              }}
-              className="p-1.5 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] disabled:opacity-40 disabled:cursor-not-allowed text-[#0F172A]"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <div className="text-xs font-bold text-[#0F172A] px-2.5 py-1 bg-[#F1F5F9] rounded-lg tabular-nums shrink-0">
+              {filteredQuestions.length > 0 ? `${currentIndex + 1} de ${filteredQuestions.length}` : '0 de 0'}
+            </div>
+
+            {/* Navigation Controls */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                disabled={currentIndex === 0 || filteredQuestions.length === 0}
+                onClick={() => {
+                  setCurrentIndex((prev) => Math.max(0, prev - 1));
+                  setShowExplanation(false);
+                }}
+                className="p-1.5 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] disabled:opacity-40 disabled:cursor-not-allowed text-[#0F172A]"
+                title="Questão anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                disabled={currentIndex >= filteredQuestions.length - 1 || filteredQuestions.length === 0}
+                onClick={() => {
+                  setCurrentIndex((prev) => Math.min(filteredQuestions.length - 1, prev + 1));
+                  setShowExplanation(false);
+                }}
+                className="p-1.5 rounded-lg border border-[#CBD5E1] bg-white hover:bg-[#F8FAFC] disabled:opacity-40 disabled:cursor-not-allowed text-[#0F172A]"
+                title="Próxima questão"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Question Solver Grid or Dedicated Empty State */}
       {filteredQuestions.length === 0 ? (
-        <div className="bg-white border border-[#E2E8F0] rounded-2xl p-10 md:p-14 text-center space-y-4 shadow-xs">
+        <div className="bg-white border border-[#E2E8F0] rounded-2xl p-8 sm:p-12 text-center space-y-4 shadow-xs">
           {selectedSubgroup === 'marcadas' ? (
             <>
-              <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto shadow-inner">
-                <Bookmark className="w-8 h-8 fill-amber-500 text-amber-500" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto shadow-inner">
+                <Bookmark className="w-7 h-7 sm:w-8 sm:h-8 fill-amber-500 text-amber-500" />
               </div>
-              <div className="max-w-md mx-auto space-y-2">
+              <div className="max-w-md mx-auto space-y-1.5">
                 <h3 className="text-base font-black text-[#0F172A]">Nenhuma questão marcada ainda</h3>
                 <p className="text-xs text-[#64748B] leading-relaxed">
-                  Você ainda não favoritou nenhuma questão. Ao resolver simulados ou o banco de questões, clique no botão <strong>Marcar</strong> na questão desejada para salvá-la aqui para revisão posterior.
+                  Você ainda não favoritou questões. Durante seus estudos, clique no botão <strong>Marcar</strong> para favoritá-la aqui.
                 </p>
               </div>
               <button
@@ -448,13 +647,13 @@ export function QuestionBankView({
             </>
           ) : selectedSubgroup === 'erros' ? (
             <>
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-inner">
-                <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-inner">
+                <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8 text-emerald-600" />
               </div>
-              <div className="max-w-md mx-auto space-y-2">
+              <div className="max-w-md mx-auto space-y-1.5">
                 <h3 className="text-base font-black text-[#0F172A]">Seu Caderno de Erros está limpo!</h3>
                 <p className="text-xs text-[#64748B] leading-relaxed">
-                  Excelente! Sempre que você errar uma questão no Banco de Questões ou nos Simulados Oficiais, ela será salva automaticamente aqui com contador de erros para você consolidar o tema.
+                  Excelente! Sempre que você errar uma questão no Banco de Questões ou nos Simulados, ela será salva automaticamente aqui para consolidação.
                 </p>
               </div>
               <button
@@ -469,22 +668,18 @@ export function QuestionBankView({
             </>
           ) : (
             <>
-              <div className="w-16 h-16 rounded-2xl bg-slate-50 text-slate-400 border border-slate-200 flex items-center justify-center mx-auto shadow-inner">
-                <HelpCircle className="w-8 h-8 text-slate-400" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-slate-50 text-slate-400 border border-slate-200 flex items-center justify-center mx-auto shadow-inner">
+                <Search className="w-7 h-7 sm:w-8 sm:h-8 text-slate-400" />
               </div>
-              <div className="max-w-md mx-auto space-y-2">
-                <h3 className="text-base font-black text-[#0F172A]">Nenhuma questão encontrada com estes filtros</h3>
+              <div className="max-w-md mx-auto space-y-1.5">
+                <h3 className="text-base font-black text-[#0F172A]">Nenhuma questão encontrada</h3>
                 <p className="text-xs text-[#64748B] leading-relaxed">
-                  Tente alterar a disciplina ou o nível de dificuldade selecionado para encontrar mais questões.
+                  Não encontramos questões correspondentes aos filtros aplicados {selectedBoard !== 'all' && `(Banca: ${selectedBoard})`} {selectedSubject !== 'all' && `(Disciplina: ${selectedSubject})`} {searchQuery && `(Termo: "${searchQuery}")`}.
                 </p>
               </div>
               <button
-                onClick={() => {
-                  setSelectedSubject('all');
-                  setSelectedDifficulty('all');
-                  setSelectedSubgroup('all');
-                }}
-                className="px-4 py-2.5 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white font-bold text-xs cursor-pointer shadow-sm transition-all"
+                onClick={handleClearAllFilters}
+                className="px-4 py-2.5 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs cursor-pointer shadow-sm transition-all"
               >
                 Limpar Todos os Filtros
               </button>
@@ -495,7 +690,7 @@ export function QuestionBankView({
         /* Main Solver Grid: Split View (Question: 8 cols | Resolution & Legal Basis: 4 cols) */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left Column (Question Card) */}
-          <div className="lg:col-span-8 bg-white border border-[#E2E8F0] rounded-xl p-5 md:p-6 shadow-xs space-y-5">
+          <div className="lg:col-span-8 bg-white border border-[#E2E8F0] rounded-xl p-4 sm:p-6 shadow-xs space-y-4">
             {/* Header Metadata */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-[#E2E8F0]">
               <div className="flex flex-wrap items-center gap-2">
@@ -535,6 +730,12 @@ export function QuestionBankView({
               </div>
 
               <div className="flex items-center gap-2">
+                <span className="text-[11px] font-medium text-[#64748B] hidden sm:inline-flex items-center gap-1">
+                  <Scissors className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Dica: Risque opções para ir por exclusão</span>
+                </span>
+
+                {/* Botão de Marcar / Favoritar */}
                 <button
                   type="button"
                   onClick={toggleBookmark}
@@ -600,15 +801,16 @@ export function QuestionBankView({
           </div>
 
           {/* Question Statement */}
-          <div className={`text-[#1E293B] whitespace-pre-line leading-relaxed ${fontSizeClass} max-w-[68ch]`}>
+          <div className={`whitespace-pre-line leading-relaxed ${fontSizeClass} max-w-[68ch] text-[#1E293B]`}>
             {activeQuestion.statement}
           </div>
 
-          {/* Choice Options List */}
+          {/* Choice Options List com opção de riscar alternativa para ir por exclusão */}
           <div className="space-y-2.5 pt-2">
             {activeQuestion.options.map((option) => {
               const isSelected = userChoice === option.id;
-              const isEliminated = eliminatedOptions[option.id];
+              const optionKey = `${activeQuestion.id}__${option.id}`;
+              const isOptionScratched = Boolean(eliminatedOptions[optionKey]);
               const isThisCorrect = option.id === activeQuestion.correctOptionId;
 
               // Determine visual styling according to Aprovação Total design tokens
@@ -616,7 +818,11 @@ export function QuestionBankView({
               let badgeClass = 'bg-[#F1F5F9] text-[#475569]';
               let bgClass = 'bg-white';
 
-              if (isSelected && !isVerified) {
+              if (isOptionScratched) {
+                borderClass = 'border-dashed border-rose-300 bg-rose-50/20';
+                badgeClass = 'bg-rose-100 text-rose-500 line-through';
+                bgClass = 'bg-slate-50/60';
+              } else if (isSelected && !isVerified) {
                 borderClass = 'border-[#2563EB] ring-1 ring-[#2563EB]/30';
                 badgeClass = 'bg-[#2563EB] text-white';
                 bgClass = 'bg-[#EFF6FF]/40';
@@ -637,27 +843,40 @@ export function QuestionBankView({
               return (
                 <div
                   key={option.id}
-                  onClick={() => !isEliminated && handleSelectOption(option.id)}
-                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 relative ${borderClass} ${bgClass} ${
-                    isEliminated ? 'opacity-35 line-through pointer-events-none' : ''
-                  }`}
+                  onClick={() => {
+                    if (isOptionScratched) {
+                      toggleEliminate({ stopPropagation: () => {} } as any, option.id);
+                      handleSelectOption(option.id);
+                    } else {
+                      handleSelectOption(option.id);
+                    }
+                  }}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 relative group ${borderClass} ${bgClass}`}
                 >
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${badgeClass}`}>
                     {option.label}
                   </div>
 
-                  <div className="flex-1 text-xs md:text-sm text-[#1E293B] leading-relaxed pt-0.5">
+                  <div className={`flex-1 text-xs md:text-sm leading-relaxed pt-0.5 ${
+                    isOptionScratched ? 'line-through text-slate-400 select-none' : 'text-[#1E293B]'
+                  }`}>
                     {option.text}
                   </div>
 
-                  {/* Eliminate tool button */}
+                  {/* Botão de Riscar / Desriscar Alternativa (Ir por Exclusão) */}
                   {!isVerified && (
                     <button
+                      type="button"
                       onClick={(e) => toggleEliminate(e, option.id)}
-                      title={isEliminated ? 'Restaurar alternativa' : 'Riscar alternativa (eliminar)'}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-[#94A3B8] hover:text-[#EF4444] rounded transition-opacity"
+                      title={isOptionScratched ? 'Restaurar alternativa (desriscar)' : 'Riscar alternativa que você acha errada (eliminar por exclusão)'}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                        isOptionScratched
+                          ? 'bg-rose-100 text-rose-700 hover:bg-rose-200 border border-rose-300 shadow-2xs'
+                          : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-slate-200'
+                      }`}
                     >
-                      <XCircle className="w-3.5 h-3.5" />
+                      <Scissors className={`w-3.5 h-3.5 ${isOptionScratched ? 'text-rose-600 rotate-90' : 'text-slate-400'}`} />
+                      <span>{isOptionScratched ? 'Riscada' : 'Riscar'}</span>
                     </button>
                   )}
                 </div>
@@ -667,7 +886,7 @@ export function QuestionBankView({
 
           {/* Action Footer Bar */}
           <div className="pt-4 border-t border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleResetQuestion}
                 disabled={!userChoice && !isVerified}
@@ -676,6 +895,18 @@ export function QuestionBankView({
                 <RotateCcw className="w-3.5 h-3.5" />
                 Limpar
               </button>
+
+              {/* Botão Pular Questão */}
+              <button
+                type="button"
+                onClick={handleSkipQuestion}
+                title="Pular esta questão sem responder e sem registrar acerto ou erro. Ela pode ser revisitada a qualquer momento."
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors cursor-pointer"
+              >
+                <SkipForward className="w-3.5 h-3.5 text-slate-600" />
+                <span>Pular Questão</span>
+              </button>
+
               {isVerified && (
                 <button
                   onClick={() => setShowExplanation(!showExplanation)}

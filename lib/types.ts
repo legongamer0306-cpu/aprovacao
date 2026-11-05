@@ -9,6 +9,7 @@ export interface SyllabusTopic {
 export interface SyllabusSubject {
   id: string;
   subject: string;
+  name?: string;
   totalTopics: number;
   completedTopics: number;
   topics: SyllabusTopic[];
@@ -78,6 +79,7 @@ export interface ExamQuestion {
   code: string;
   year: number;
   board: string; // e.g. FGV, Cebraspe, FCC, Vunesp, IA Aprovação Total, Comunidade
+  banca?: string; // Sinônimo / alias de board para filtros e buscas por banca
   agency: string; // e.g. Receita Federal, TJ-SP, TCU, Simulado Inédito
   role: string;
   subject: string; // e.g. Direito Constitucional, Direito Tributário

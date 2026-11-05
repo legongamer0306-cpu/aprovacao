@@ -120,12 +120,14 @@ export function SimuladoQuestionsEditorModal({
 
   // Filtered list of questions in current exam
   const filteredQuestions = questions.filter((q) => {
+    const qBoard = (q.board || q.banca || '').toLowerCase();
     const matchesSearch =
       !searchQuery ||
       q.statement.toLowerCase().includes(searchQuery.toLowerCase()) ||
       q.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
       q.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.subject.toLowerCase().includes(searchQuery.toLowerCase());
+      q.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      qBoard.includes(searchQuery.toLowerCase());
 
     const matchesSubject = selectedSubject === 'all' || q.subject === selectedSubject;
     const matchesDifficulty = selectedDifficulty === 'all' || q.difficulty === selectedDifficulty;
@@ -142,11 +144,14 @@ export function SimuladoQuestionsEditorModal({
   );
 
   const filteredImportQuestions = availableToImport.filter((q) => {
+    const qBoard = (q.board || q.banca || '').toLowerCase();
     const matchesSearch =
       !importSearch ||
       q.statement.toLowerCase().includes(importSearch.toLowerCase()) ||
       q.code.toLowerCase().includes(importSearch.toLowerCase()) ||
-      q.subject.toLowerCase().includes(importSearch.toLowerCase());
+      q.subject.toLowerCase().includes(importSearch.toLowerCase()) ||
+      (q.topic && q.topic.toLowerCase().includes(importSearch.toLowerCase())) ||
+      qBoard.includes(importSearch.toLowerCase());
     const matchesSubject = importSubject === 'all' || q.subject === importSubject;
     return matchesSearch && matchesSubject;
   });
