@@ -17,7 +17,8 @@ import {
   ShieldAlert,
   Timer,
   Bookmark,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
 import { ExamTarget, ManagedUser } from '@/lib/types';
 import { NavigationTab } from './Sidebar';
@@ -75,7 +76,7 @@ export function CommandPalette({
     { label: '⭐ Ver Questões Marcadas (Favoritas)', tab: 'questoes', mode: 'marcadas', icon: <Bookmark className="w-4 h-4 text-amber-500 fill-amber-500" /> },
     { label: '❌ Caderno de Erros (Erros Frequentes)', tab: 'questoes', mode: 'erros', icon: <AlertCircle className="w-4 h-4 text-rose-500" /> },
     { label: 'Simulados & Provas Cronometradas', tab: 'simulados', icon: <Timer className="w-4 h-4 text-emerald-600" /> },
-    { label: 'Mapas Mentais & Mnemônicos Visuais', tab: 'mapas', icon: <Network className="w-4 h-4 text-purple-600" /> },
+    { label: 'Criar Resumos (Síntese & Palavras-Chave)', tab: 'resumos', icon: <Sparkles className="w-4 h-4 text-purple-600" /> },
     { label: 'Meus PDFs (Download & Organização)', tab: 'pdfs', icon: <FileText className="w-4 h-4 text-[#2563EB]" /> },
     { label: 'Visualizar Cronograma de Hoje', tab: 'cronograma', icon: <Calendar className="w-4 h-4 text-emerald-600" /> },
     { label: 'Auditoria de Desempenho e Gargalos', tab: 'desempenho', icon: <BarChart3 className="w-4 h-4 text-amber-600" /> },

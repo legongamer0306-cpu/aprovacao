@@ -15,7 +15,7 @@ import { TargetExamModal } from '@/components/TargetExamModal';
 import { CommandPalette } from '@/components/CommandPalette';
 import { PasteEditalModal } from '@/components/PasteEditalModal';
 import { PDFLibraryView } from '@/components/PDFLibraryView';
-import { MapasMentaisView } from '@/components/MapasMentaisView';
+import { ResumosView } from '@/components/ResumosView';
 import { SimuladosView } from '@/components/SimuladosView';
 import { ExamRunnerModal } from '@/components/ExamRunnerModal';
 import { AdminPortalView } from '@/components/AdminPortalView';
@@ -44,7 +44,11 @@ import {
   MOCK_MANAGED_USERS,
   MOCK_SIMULADO_RANKINGS,
   INITIAL_STUDENT_BOOKMARKS,
-  INITIAL_STUDENT_MISTAKES
+  INITIAL_STUDENT_MISTAKES,
+  INITIAL_APP_NOTIFICATIONS,
+  INITIAL_STUDENT_STREAKS,
+  INITIAL_STUDENT_DAILY_GOALS,
+  INITIAL_STUDY_SUMMARIES
 } from '@/lib/mockData';
 import { 
   ExamTarget, 
@@ -59,7 +63,11 @@ import {
   DailyTask,
   CycleDay,
   AuditEntry,
-  MockExamRankingEntry
+  MockExamRankingEntry,
+  AppNotification,
+  StudentStreakData,
+  StudentDailyGoal,
+  StudySummary
 } from '@/lib/types';
 import { 
   LayoutDashboard, 
@@ -94,7 +102,10 @@ export default function HomePage() {
   const [isStudentAreaOpen, setIsStudentAreaOpen] = useState(false);
   const [questions, setQuestions] = useState<ExamQuestion[]>(MOCK_QUESTIONS);
   const [subjectFilterForQuestions, setSubjectFilterForQuestions] = useState<string | undefined>(undefined);
-  const [streakDays, setStreakDays] = useState(18);
+  const [streakDays, setStreakDays] = useState(1);
+  const [studentStreakMap, setStudentStreakMap] = useState<Record<string, StudentStreakData>>(INITIAL_STUDENT_STREAKS);
+  const [studentDailyGoalsMap, setStudentDailyGoalsMap] = useState<Record<string, StudentDailyGoal>>(INITIAL_STUDENT_DAILY_GOALS);
+  const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_APP_NOTIFICATIONS);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentStudent, setCurrentStudent] = useState<ManagedUser | null>(null);
   const [studentPerformances, setStudentPerformances] = useState<Record<string, SubjectPerformance[]>>(STUDENT_PERFORMANCES_MAP);
@@ -119,6 +130,8 @@ export default function HomePage() {
   const [studentBookmarkedQuestions, setStudentBookmarkedQuestions] = useState<Record<string, string[]>>(INITIAL_STUDENT_BOOKMARKS);
   const [studentMistakes, setStudentMistakes] = useState<Record<string, Record<string, { count: number; lastMissedAt: string }>>>(INITIAL_STUDENT_MISTAKES);
   const [studentScratchedQuestions, setStudentScratchedQuestions] = useState<Record<string, string[]>>({});
+  const [studySummaries, setStudySummaries] = useState<StudySummary[]>(INITIAL_STUDY_SUMMARIES);
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Safe client hydration from localStorage on mount (eliminates all SSR hydration mismatches)
   useEffect(() => {
@@ -252,6 +265,39 @@ export default function HomePage() {
         if (savedScratched) {
           const parsed = JSON.parse(savedScratched);
           if (parsed && typeof parsed === 'object') setStudentScratchedQuestions(parsed);
+        }
+
+        const savedStreaks = localStorage.getItem('aprovacao_total_student_streaks');
+        if (savedStreaks) {
+          const parsed = JSON.parse(savedStreaks);
+          if (parsed && typeof parsed === 'object') setStudentStreakMap(parsed);
+        }
+
+        const savedDailyGoals = localStorage.getItem('aprovacao_total_student_daily_goals');
+        if (savedDailyGoals) {
+          const parsed = JSON.parse(savedDailyGoals);
+          if (parsed && typeof parsed === 'object') setStudentDailyGoalsMap(parsed);
+        }
+
+        const savedNotifs = localStorage.getItem('aprovacao_total_notifications');
+        if (savedNotifs) {
+          const parsed = JSON.parse(savedNotifs);
+          if (Array.isArray(parsed) && parsed.length > 0) setNotifications(parsed);
+        }
+
+        const savedSummaries = localStorage.getItem('aprovacao_total_study_summaries');
+        if (savedSummaries) {
+          const parsed = JSON.parse(savedSummaries);
+          if (Array.isArray(parsed) && parsed.length > 0) setStudySummaries(parsed);
+        }
+
+        const savedTheme = localStorage.getItem('aprovacao_total_theme');
+        if (savedTheme === 'dark') {
+          setIsDarkMode(true);
+          document.documentElement.classList.add('dark');
+        } else {
+          setIsDarkMode(false);
+          document.documentElement.classList.remove('dark');
         }
       } catch (err) {
         console.error('Falha ao restaurar dados persistidos no cliente:', err);
@@ -425,6 +471,52 @@ export default function HomePage() {
       localStorage.setItem('aprovacao_total_student_scratched_questions', JSON.stringify(studentScratchedQuestions));
     } catch {}
   }, [studentScratchedQuestions, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      localStorage.setItem('aprovacao_total_student_streaks', JSON.stringify(studentStreakMap));
+    } catch {}
+  }, [studentStreakMap, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      localStorage.setItem('aprovacao_total_student_daily_goals', JSON.stringify(studentDailyGoalsMap));
+    } catch {}
+  }, [studentDailyGoalsMap, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      localStorage.setItem('aprovacao_total_notifications', JSON.stringify(notifications));
+    } catch {}
+  }, [notifications, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      localStorage.setItem('aprovacao_total_study_summaries', JSON.stringify(studySummaries));
+    } catch {}
+  }, [studySummaries, isMounted]);
+
+  const handleToggleTheme = () => {
+    setIsDarkMode((prev) => {
+      const next = !prev;
+      if (next) {
+        document.documentElement.classList.add('dark');
+        try {
+          localStorage.setItem('aprovacao_total_theme', 'dark');
+        } catch {}
+      } else {
+        document.documentElement.classList.remove('dark');
+        try {
+          localStorage.setItem('aprovacao_total_theme', 'light');
+        } catch {}
+      }
+      return next;
+    });
+  };
 
   // Question Handlers - Salva automaticamente no banco de questões permanente (localStorage e state)
   const handleAddQuestion = (newQuestion: ExamQuestion) => {
@@ -619,6 +711,55 @@ export default function HomePage() {
       };
     });
 
+    // Contagem de login diário começando no 1d e a cada novo login vinculado ao email aumenta mais um dia
+    const studentEmailKey = student.email.toLowerCase().trim();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    setStudentStreakMap((prev) => {
+      // Prioritize student email key or student id
+      const current = prev[studentEmailKey] || prev[student.id] || {
+        currentStreak: 0,
+        longestStreak: 0,
+        lastStudyDate: '',
+        activityDates: []
+      };
+
+      const datesSet = new Set(current.activityDates || []);
+      datesSet.add(todayStr);
+      const updatedDates = Array.from(datesSet);
+
+      let newStreak = current.currentStreak;
+      if (!current.lastStudyDate || current.currentStreak < 1) {
+        // Primeiro login registrado: começa rigorosamente no 1d
+        newStreak = 1;
+      } else if (current.lastStudyDate === todayStr) {
+        // Já logou hoje neste mesmo dia: mantém a contagem
+        newStreak = Math.max(1, current.currentStreak);
+      } else {
+        // Novo login em dia subsequente: aumenta +1 dia consecutivo
+        newStreak = current.currentStreak + 1;
+      }
+
+      const newLongest = Math.max(current.longestStreak || 1, newStreak);
+      setStreakDays(newStreak);
+
+      return {
+        ...prev,
+        [student.id]: {
+          currentStreak: newStreak,
+          longestStreak: newLongest,
+          lastStudyDate: todayStr,
+          activityDates: updatedDates
+        },
+        [studentEmailKey]: {
+          currentStreak: newStreak,
+          longestStreak: newLongest,
+          lastStudyDate: todayStr,
+          activityDates: updatedDates
+        }
+      };
+    });
+
     const studentTarget = (student.targetExam || '').toLowerCase();
     const matching = targets.find((t) => 
       (t.enrolledStudentIds || []).includes(student.id) ||
@@ -673,6 +814,23 @@ export default function HomePage() {
       ...prev,
       [newStudent.id]: getInitialStudentSyllabi(newStudent.id),
     }));
+
+    // Inicializar contagem de login diário começando estritamente no 1d para a nova conta vinculada ao e-mail
+    const emailKey = newStudent.email.toLowerCase().trim();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const initialStreakData = {
+      currentStreak: 1,
+      longestStreak: 1,
+      lastStudyDate: todayStr,
+      activityDates: [todayStr]
+    };
+
+    setStudentStreakMap((prev) => ({
+      ...prev,
+      [newStudent.id]: initialStreakData,
+      [emailKey]: initialStreakData
+    }));
+    setStreakDays(1);
 
     setCurrentStudent(newStudent);
     if (currentTab === 'admin') {
@@ -1153,6 +1311,167 @@ export default function HomePage() {
     setCurrentTab('questoes');
   };
 
+  // 5. Gestão Dinâmica de Sequência de Estudos e Meta Diária de Questões
+  const todayIso = new Date().toISOString().split('T')[0];
+  const activeStudentEmail = (currentStudent?.email || 'usr-1@aluno.com').toLowerCase().trim();
+
+  const activeStreakData: StudentStreakData = 
+    studentStreakMap[activeStudentEmail] || 
+    studentStreakMap[activeStudentId] || {
+      currentStreak: 1,
+      longestStreak: 1,
+      lastStudyDate: todayIso,
+      activityDates: [todayIso]
+    };
+
+  const rawDailyGoal: StudentDailyGoal = studentDailyGoalsMap[activeStudentId] || {
+    targetQuestions: 30,
+    answeredToday: 0,
+    lastResetDate: todayIso
+  };
+
+  // Se o dia mudou, reseta o answeredToday para 0 mantendo o target escolhido pelo aluno
+  const activeDailyGoal: StudentDailyGoal = rawDailyGoal.lastResetDate === todayIso
+    ? rawDailyGoal
+    : {
+        targetQuestions: rawDailyGoal.targetQuestions || 30,
+        answeredToday: 0,
+        lastResetDate: todayIso
+      };
+
+  const handleUpdateDailyGoalTarget = (newTarget: number) => {
+    setStudentDailyGoalsMap((prev) => ({
+      ...prev,
+      [activeStudentId]: {
+        ...(prev[activeStudentId] || { answeredToday: 0, lastResetDate: todayIso }),
+        targetQuestions: newTarget
+      }
+    }));
+
+    // Disparar notificação de atualização de meta
+    const newNotif: AppNotification = {
+      id: `notif-goal-${Date.now()}`,
+      title: 'Meta Diária Atualizada',
+      message: `Sua nova meta foi definida para ${newTarget} questões por dia. Vamos com tudo rumo à aprovação!`,
+      category: 'meta',
+      timestamp: 'Agora',
+      read: false,
+      badge: 'Nova Meta',
+      studentId: activeStudentId
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+  };
+
+  // Função central para registrar atividade de estudo e impulsionar a sequência e meta
+  const recordStudyActivity = (incrementQuestions: number = 0) => {
+    const studentId = activeStudentId;
+    const studentEmail = activeStudentEmail;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    // 1. Atualizar Sequência de Estudos
+    setStudentStreakMap((prev) => {
+      const current = prev[studentEmail] || prev[studentId] || {
+        currentStreak: 1,
+        longestStreak: 1,
+        lastStudyDate: todayStr,
+        activityDates: [todayStr]
+      };
+
+      const datesSet = new Set(current.activityDates || []);
+      datesSet.add(todayStr);
+      const updatedDates = Array.from(datesSet);
+
+      let newStreak = Math.max(1, current.currentStreak);
+      if (current.lastStudyDate === todayStr) {
+        // Já estudou hoje, mantém a contagem
+        newStreak = Math.max(1, current.currentStreak);
+      } else if (current.lastStudyDate) {
+        const last = new Date(current.lastStudyDate);
+        const diffDays = Math.round((now.getTime() - last.getTime()) / (1000 * 3600 * 24));
+        if (diffDays <= 1) {
+          // Estudou ontem (ou dentro de 24h), incrementa streak!
+          newStreak = current.currentStreak + 1;
+        } else {
+          // Mais de 1 dia sem estudar, sequência reinicia em 1d
+          newStreak = 1;
+        }
+      } else {
+        newStreak = 1;
+      }
+
+      const newLongest = Math.max(current.longestStreak || 1, newStreak);
+      setStreakDays(newStreak);
+
+      return {
+        ...prev,
+        [studentId]: {
+          currentStreak: newStreak,
+          longestStreak: newLongest,
+          lastStudyDate: todayStr,
+          activityDates: updatedDates
+        },
+        [studentEmail]: {
+          currentStreak: newStreak,
+          longestStreak: newLongest,
+          lastStudyDate: todayStr,
+          activityDates: updatedDates
+        }
+      };
+    });
+
+    // 2. Atualizar Meta Diária se houver questões respondidas
+    if (incrementQuestions > 0) {
+      setStudentDailyGoalsMap((prev) => {
+        const currentGoal = prev[studentId] || {
+          targetQuestions: 30,
+          answeredToday: 0,
+          lastResetDate: todayStr
+        };
+
+        const baseAnswered = currentGoal.lastResetDate === todayStr ? currentGoal.answeredToday : 0;
+        const newAnswered = baseAnswered + incrementQuestions;
+        const target = currentGoal.targetQuestions || 30;
+
+        // Se acabou de atingir a meta diária exatamente nesta resposta
+        if (baseAnswered < target && newAnswered >= target) {
+          const celebrationNotif: AppNotification = {
+            id: `notif-goal-reached-${Date.now()}`,
+            title: '🎯 Meta Diária Concluída!',
+            message: `Sensacional! Você atingiu sua meta diária de ${target} questões respondidas hoje. Sua disciplina é a chave da aprovação!`,
+            category: 'meta',
+            timestamp: 'Agora',
+            read: false,
+            badge: 'Meta Atingida'
+          };
+          setNotifications((notifs) => [celebrationNotif, ...notifs]);
+        }
+
+        return {
+          ...prev,
+          [studentId]: {
+            targetQuestions: target,
+            answeredToday: newAnswered,
+            lastResetDate: todayStr
+          }
+        };
+      });
+    }
+  };
+
+  // Notificações Handlers
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const handleMarkNotificationRead = (id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  };
+
+  const handleClearReadNotifications = () => {
+    setNotifications((prev) => prev.filter((n) => !n.read));
+  };
+
   // Session checks: student vs admin isolation
   const isStudentLoggedIn = Boolean(currentStudent && currentStudent.status === 'ativo');
   const isAdminLoggedIn = Boolean(adminSession.isAuthenticated);
@@ -1227,6 +1546,8 @@ export default function HomePage() {
               setAdminSubTab(subTab);
               setCurrentTab('admin');
             }}
+            isDarkMode={isDarkMode}
+            onToggleTheme={handleToggleTheme}
           />
         </div>
       )}
@@ -1278,6 +1599,8 @@ export default function HomePage() {
                 setIsMobileSidebarOpen(false);
               }}
               onCloseMobile={() => setIsMobileSidebarOpen(false)}
+              isDarkMode={isDarkMode}
+              onToggleTheme={handleToggleTheme}
             />
           </div>
         </div>
@@ -1287,7 +1610,15 @@ export default function HomePage() {
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <Header
           currentTarget={currentTarget}
-          streakDays={streakDays}
+          streakDays={activeStreakData.currentStreak}
+          streakData={activeStreakData}
+          dailyGoal={activeDailyGoal}
+          onUpdateDailyGoal={handleUpdateDailyGoalTarget}
+          notifications={notifications}
+          onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+          onMarkNotificationRead={handleMarkNotificationRead}
+          onClearReadNotifications={handleClearReadNotifications}
+          onNavigateTab={(tab) => setCurrentTab(tab as NavigationTab)}
           onOpenTargetModal={() => setIsTargetModalOpen(true)}
           onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           searchQuery={searchQuery}
@@ -1300,6 +1631,8 @@ export default function HomePage() {
           currentStudent={currentStudent}
           onOpenStudentArea={() => setIsStudentAreaOpen(true)}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
+          isDarkMode={isDarkMode}
+          onToggleTheme={handleToggleTheme}
         />
 
         {/* Scrollable Canvas */}
@@ -1391,8 +1724,13 @@ export default function HomePage() {
                   <DashboardView
                     currentTarget={targetWithStudentSyllabus}
                     tasks={activeTasks}
-                    onToggleTask={handleToggleTask}
+                    onToggleTask={(taskId) => {
+                      handleToggleTask(taskId);
+                      recordStudyActivity(0);
+                    }}
                     performances={activePerformances}
+                    streakData={activeStreakData}
+                    dailyGoal={activeDailyGoal}
                     onNavigateToQuestions={handleNavigateToQuestions}
                     onNavigateToSimulados={() => setCurrentTab('simulados')}
                     onOpenPasteEdital={() => setIsPasteEditalOpen(true)}
@@ -1411,11 +1749,9 @@ export default function HomePage() {
                     onBookmarkToggle={handleToggleBookmark}
                     onRemoveMistake={handleRemoveMistake}
                     onRecordAnswer={(questionId, isCorrect) => {
+                      recordStudyActivity(1);
                       if (!isCorrect) {
                         handleRecordMistake(questionId);
-                      }
-                      if (isCorrect) {
-                        setStreakDays((prev) => prev);
                       }
                       if (!currentStudent) return;
 
@@ -1522,8 +1858,16 @@ export default function HomePage() {
                   />
                 )}
 
-                {currentTab === 'mapas' && (
-                  <MapasMentaisView
+                {(currentTab === 'resumos' || (currentTab as string) === 'mapas') && (
+                  <ResumosView
+                    summaries={studySummaries}
+                    onCreateSummary={(newSummary) => {
+                      setStudySummaries((prev) => [newSummary, ...prev]);
+                      recordStudyActivity(0);
+                    }}
+                    onDeleteSummary={(id) => {
+                      setStudySummaries((prev) => prev.filter((s) => s.id !== id));
+                    }}
                     onNavigateToQuestions={handleNavigateToQuestions}
                   />
                 )}
@@ -1662,6 +2006,8 @@ export default function HomePage() {
           onRecordRankingEntry={handleRecordRankingEntry}
           onRecordMistake={handleRecordMistake}
           onFinishExam={(examId, score, correctCount, timeSpentSec) => {
+            const examQuestionCount = activeRunningExam.questions?.length || 10;
+            recordStudyActivity(examQuestionCount);
             setSimulados((prev) => {
               const updated = prev.map((s) =>
                 s.id === examId

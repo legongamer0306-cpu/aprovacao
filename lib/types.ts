@@ -200,6 +200,27 @@ export interface MindMap {
   tags: string[];
 }
 
+export interface StudySummary {
+  id: string;
+  studentId: string;
+  title: string;
+  subject: string;
+  topic?: string;
+  rawText: string;
+  summaryPoints: string[];
+  keyTerms: {
+    term: string;
+    definition: string;
+    relevance: 'Alta' | 'Média' | 'Essencial';
+  }[];
+  mnemonics?: string[];
+  examTips?: string[];
+  legalRef?: string;
+  createdAt: string;
+  readingTimeMinutes: number;
+}
+
+
 export type LegalCategory = 
   | 'Súmula Vinculante' 
   | 'Súmula' 
@@ -271,3 +292,31 @@ export interface MockExamRankingEntry {
   completedAt: string;
   timeSpentSeconds: number;
 }
+
+export type NotificationCategory = 'edital' | 'banca' | 'meta' | 'streak' | 'simulado' | 'sistema';
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  category: NotificationCategory;
+  timestamp: string;
+  read: boolean;
+  linkTab?: string;
+  badge?: string;
+  studentId?: string; // se undefined, aviso global
+}
+
+export interface StudentStreakData {
+  currentStreak: number;
+  longestStreak: number;
+  lastStudyDate: string; // YYYY-MM-DD
+  activityDates: string[]; // List of YYYY-MM-DD days with study activity
+}
+
+export interface StudentDailyGoal {
+  targetQuestions: number; // e.g. 15, 30, 40, 50, 100
+  answeredToday: number;
+  lastResetDate: string; // YYYY-MM-DD
+}
+

@@ -14,13 +14,26 @@ import {
   GraduationCap,
   User,
   AlertTriangle,
-  Menu
+  Menu,
+  Sun,
+  Moon
 } from 'lucide-react';
-import { ExamTarget, ManagedUser } from '@/lib/types';
+import { ExamTarget, ManagedUser, AppNotification, StudentStreakData, StudentDailyGoal } from '@/lib/types';
+import { NotificationsDropdown } from './NotificationsDropdown';
+import { DailyGoalModal } from './DailyGoalModal';
+import { StreakInfoModal } from './StreakInfoModal';
 
 interface HeaderProps {
   currentTarget: ExamTarget;
   streakDays: number;
+  streakData?: StudentStreakData;
+  dailyGoal?: StudentDailyGoal;
+  onUpdateDailyGoal?: (newTarget: number) => void;
+  notifications?: AppNotification[];
+  onMarkAllNotificationsRead?: () => void;
+  onMarkNotificationRead?: (id: string) => void;
+  onClearReadNotifications?: () => void;
+  onNavigateTab?: (tab: string) => void;
   onOpenTargetModal: () => void;
   onOpenCommandPalette: () => void;
   onSearchChange?: (val: string) => void;
@@ -30,11 +43,21 @@ interface HeaderProps {
   currentStudent: ManagedUser | null;
   onOpenStudentArea: () => void;
   onToggleMobileSidebar?: () => void;
+  isDarkMode?: boolean;
+  onToggleTheme?: () => void;
 }
 
 export function Header({
   currentTarget,
   streakDays,
+  streakData,
+  dailyGoal,
+  onUpdateDailyGoal,
+  notifications = [],
+  onMarkAllNotificationsRead,
+  onMarkNotificationRead,
+  onClearReadNotifications,
+  onNavigateTab,
   onOpenTargetModal,
   onOpenCommandPalette,
   searchQuery = '',
@@ -44,11 +67,34 @@ export function Header({
   currentStudent,
   onOpenStudentArea,
   onToggleMobileSidebar,
+  isDarkMode = false,
+  onToggleTheme,
 }: HeaderProps) {
+  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
+  const [isDailyGoalModalOpen, setIsDailyGoalModalOpen] = React.useState(false);
+  const [isStreakModalOpen, setIsStreakModalOpen] = React.useState(false);
+
   const isPending = currentStudent?.status === 'pendente_aprovacao';
   const isRestricted = Boolean(currentStudent && currentStudent.status !== 'ativo' && !isPending);
   const isActualAdmin = Boolean(isAdminAuthenticated && !currentStudent);
   const isUserLoggedIn = Boolean((currentStudent && currentStudent.status === 'ativo') || isActualAdmin);
+
+  const unreadNotificationsCount = notifications.filter(n => !n.read).length;
+
+  const currentGoal: StudentDailyGoal = dailyGoal || {
+    targetQuestions: 30,
+    answeredToday: 0,
+    lastResetDate: new Date().toISOString().split('T')[0]
+  };
+
+  const isGoalAchieved = currentGoal.answeredToday >= currentGoal.targetQuestions && currentGoal.targetQuestions > 0;
+
+  const activeStreakData: StudentStreakData = streakData || {
+    currentStreak: streakDays,
+    longestStreak: Math.max(streakDays, 14),
+    lastStudyDate: new Date().toISOString().split('T')[0],
+    activityDates: [new Date().toISOString().split('T')[0]]
+  };
 
   return (
     <header className="sticky top-0 z-30 h-14 bg-white/95 backdrop-blur-md border-b border-[#E2E8F0] px-4 md:px-8 flex items-center justify-between gap-3">
@@ -83,7 +129,7 @@ export function Header({
           <>
             <button
               onClick={onOpenTargetModal}
-              className="md:hidden flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F172A] rounded-md transition-colors truncate"
+              className="md:hidden flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F172A] rounded-md transition-colors truncate cursor-pointer"
             >
               <span className="w-2 h-2 rounded-full bg-[#2563EB]" />
               <span className="truncate max-w-[130px]">{currentTarget.code}</span>
@@ -112,24 +158,40 @@ export function Header({
       </div>
 
       {/* Right Tools & Student / Admin Indicators */}
-      <div className="flex items-center gap-2 sm:gap-2.5">
+      <div className="flex items-center gap-2 sm:gap-2.5 relative">
         {isUserLoggedIn && (
           <>
-            {/* Streak Pill */}
-            <div 
-              title="Sequência de estudos contínua"
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-[#FEF3C7] border border-[#FDE68A] text-[#B45309] text-xs font-bold transition-transform hover:scale-105 select-none shadow-2xs"
+            {/* Streak Pill - Click opens Streak Info Modal */}
+            <button 
+              onClick={() => setIsStreakModalOpen(true)}
+              title="Clique para ver seu histórico de sequência e recorde de estudos diários"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-[#FEF3C7] hover:bg-[#FDE68A] border border-[#FDE68A] text-[#B45309] text-xs font-bold transition-all hover:scale-105 select-none shadow-2xs cursor-pointer"
             >
               <Flame className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[#D97706] fill-[#F59E0B] animate-pulse" />
               <span className="tabular-nums">{streakDays}d</span>
               <span className="hidden xl:inline text-[11px] font-medium text-[#B45309]/80">• Fogo</span>
-            </div>
+            </button>
 
-            {/* Daily Target Indicator */}
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#EFF6FF] border border-[#BFDBFE] text-[#1D4ED8] text-xs font-semibold">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#2563EB]" />
-              <span>Meta: 35/40 q</span>
-            </div>
+            {/* Daily Target Indicator - Click opens Daily Goal adjustment modal */}
+            <button 
+              onClick={() => setIsDailyGoalModalOpen(true)}
+              title="Clique para ajustar ou ver os detalhes da sua meta diária de questões"
+              className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all hover:opacity-90 cursor-pointer ${
+                isGoalAchieved
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 shadow-xs'
+                  : 'bg-[#EFF6FF] border border-[#BFDBFE] text-[#1D4ED8]'
+              }`}
+            >
+              <CheckCircle2 className={`w-3.5 h-3.5 ${isGoalAchieved ? 'text-emerald-600' : 'text-[#2563EB]'}`} />
+              <span className="tabular-nums">
+                Meta: {currentGoal.answeredToday}/{currentGoal.targetQuestions} q
+              </span>
+              {isGoalAchieved && (
+                <span className="text-[10px] bg-emerald-600 text-white font-black px-1.5 py-0.2 rounded uppercase">
+                  Feita!
+                </span>
+              )}
+            </button>
           </>
         )}
 
@@ -158,14 +220,52 @@ export function Header({
           </button>
         )}
 
-        {/* Notifications */}
-        <button 
-          title="Notificações e Avisos de Banca"
-          className="relative p-2 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] transition-colors"
-        >
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#2563EB] ring-2 ring-white" />
-        </button>
+        {/* Notifications Bell Button */}
+        <div className="relative">
+          <button 
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            title="Notificações e Avisos de Banca"
+            className={`relative p-2 rounded-lg transition-colors cursor-pointer ${
+              isNotificationsOpen 
+                ? 'bg-blue-50 text-blue-600' 
+                : 'text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9]'
+            }`}
+          >
+            <Bell className="w-4 h-4" />
+            {unreadNotificationsCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-white">
+                {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+              </span>
+            )}
+          </button>
+
+          {/* Notifications Dropdown Panel */}
+          <NotificationsDropdown
+            notifications={notifications}
+            isOpen={isNotificationsOpen}
+            onClose={() => setIsNotificationsOpen(false)}
+            onMarkAllAsRead={() => onMarkAllNotificationsRead?.()}
+            onMarkAsRead={(id) => onMarkNotificationRead?.(id)}
+            onClearRead={() => onClearReadNotifications?.()}
+            onNavigateTab={onNavigateTab}
+          />
+        </div>
+
+        {/* Theme Toggle Button (Claro / Escuro) */}
+        {onToggleTheme && (
+          <button
+            onClick={onToggleTheme}
+            title={isDarkMode ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
+            className="p-2 rounded-lg text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          >
+            {isDarkMode ? (
+              <Sun className="w-4 h-4 text-amber-400 fill-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-slate-600" />
+            )}
+          </button>
+        )}
+
 
         {/* Profile Pill: Admin Badge or Student Avatar */}
         {isActualAdmin ? (
@@ -243,6 +343,21 @@ export function Header({
           </div>
         )}
       </div>
+
+      {/* Daily Goal adjustment modal */}
+      <DailyGoalModal
+        isOpen={isDailyGoalModalOpen}
+        onClose={() => setIsDailyGoalModalOpen(false)}
+        dailyGoal={currentGoal}
+        onUpdateTarget={(newTarget) => onUpdateDailyGoal?.(newTarget)}
+      />
+
+      {/* Streak Info modal */}
+      <StreakInfoModal
+        isOpen={isStreakModalOpen}
+        onClose={() => setIsStreakModalOpen(false)}
+        streakData={activeStreakData}
+      />
     </header>
   );
 }

@@ -27,7 +27,9 @@ import {
   ChevronRight,
   X,
   FileSpreadsheet,
-  AlertCircle
+  AlertCircle,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { ExamTarget, ManagedUser, AdminSession } from '@/lib/types';
 
@@ -36,6 +38,7 @@ export type NavigationTab =
   | 'questoes' 
   | 'simulados' 
   | 'flashcards' 
+  | 'resumos'
   | 'mapas' 
   | 'cronograma' 
   | 'desempenho' 
@@ -64,6 +67,8 @@ interface SidebarProps {
   bookmarkedQuestionsCount?: number;
   mistakesCount?: number;
   activeQuestionMode?: 'all' | 'oficial' | 'membros' | 'marcadas' | 'erros';
+  isDarkMode?: boolean;
+  onToggleTheme?: () => void;
 }
 
 export function Sidebar({
@@ -85,13 +90,15 @@ export function Sidebar({
   bookmarkedQuestionsCount = 0,
   mistakesCount = 0,
   activeQuestionMode = 'all',
+  isDarkMode = false,
+  onToggleTheme,
 }: SidebarProps) {
   // Navigation tabs for student study modules
   const studyNavItems: { id: NavigationTab; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'dashboard', label: 'Painel Geral', icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: 'questoes', label: 'Banco de Questões', icon: <BookOpenCheck className="w-4 h-4" />, badge: '4 novas' },
     { id: 'simulados', label: 'Simulados & Provas', icon: <Timer className="w-4 h-4 text-emerald-600" />, badge: 'Novo' },
-    { id: 'mapas', label: 'Mapas Mentais', icon: <Network className="w-4 h-4 text-purple-600" />, badge: 'Visual' },
+    { id: 'resumos', label: 'Criar Resumos', icon: <Sparkles className="w-4 h-4 text-purple-600" />, badge: 'Palavras-Chave' },
     { id: 'cronograma', label: 'Cronograma & Ciclo', icon: <CalendarCheck className="w-4 h-4" /> },
     { id: 'pdfs', label: 'Meus PDFs', icon: <FileText className="w-4 h-4 text-[#2563EB]" />, badge: 'Classes' },
     { id: 'desempenho', label: 'Métricas & Auditoria', icon: <BarChart3 className="w-4 h-4" /> },
@@ -135,15 +142,27 @@ export function Sidebar({
           </div>
         </div>
 
-        {onCloseMobile && (
-          <button
-            onClick={onCloseMobile}
-            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            title="Fechar menu lateral"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {onToggleTheme && (
+            <button
+              onClick={onToggleTheme}
+              title={isDarkMode ? 'Mudar para Tema Claro' : 'Mudar para Tema Escuro'}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+            </button>
+          )}
+
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Fechar menu lateral"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Target Exam Selector Chip */}

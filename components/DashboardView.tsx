@@ -17,7 +17,7 @@ import {
   FileText,
   Bookmark
 } from 'lucide-react';
-import { ExamTarget, DailyTask, SubjectPerformance } from '@/lib/types';
+import { ExamTarget, DailyTask, SubjectPerformance, StudentStreakData, StudentDailyGoal } from '@/lib/types';
 import { MOCK_HOURLY_HEATMAP } from '@/lib/mockData';
 
 interface DashboardViewProps {
@@ -25,6 +25,8 @@ interface DashboardViewProps {
   tasks: DailyTask[];
   onToggleTask: (taskId: string) => void;
   performances: SubjectPerformance[];
+  streakData?: StudentStreakData;
+  dailyGoal?: StudentDailyGoal;
   onNavigateToQuestions: (subjectFilter?: string, mode?: 'all' | 'oficial' | 'membros' | 'marcadas' | 'erros') => void;
   onNavigateToSimulados?: () => void;
   onOpenPasteEdital?: () => void;
@@ -35,6 +37,8 @@ export function DashboardView({
   tasks,
   onToggleTask,
   performances,
+  streakData,
+  dailyGoal,
   onNavigateToQuestions,
   onNavigateToSimulados,
   onOpenPasteEdital,
@@ -110,28 +114,49 @@ export function DashboardView({
 
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Questões Resolvidas */}
+        {/* Metric 1: Questões Resolvidas & Meta Diária */}
         <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-xs hover:border-[#CBD5E1] transition-all">
           <div className="flex items-center justify-between text-xs text-[#64748B] font-semibold mb-2">
-            <span>Questões no Curso</span>
+            <span>Meta Diária de Questões</span>
             <span className="p-1.5 rounded-md bg-[#EFF6FF] text-[#2563EB]">
               <BookOpen className="w-3.5 h-3.5" />
             </span>
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl md:text-3xl font-extrabold text-[#0F172A] tabular-nums">
-              {totalQuestions} <span className="text-xs font-medium text-[#64748B]">/ 50 meta</span>
+              {dailyGoal ? dailyGoal.answeredToday : totalQuestions}{' '}
+              <span className="text-xs font-medium text-[#64748B]">
+                / {dailyGoal ? dailyGoal.targetQuestions : 50} meta
+              </span>
             </span>
             <span className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full ${
-              isZeroState ? 'text-slate-600 bg-slate-100' : 'text-[#10B981] bg-[#ECFDF5]'
+              dailyGoal && dailyGoal.answeredToday >= dailyGoal.targetQuestions && dailyGoal.targetQuestions > 0
+                ? 'text-emerald-700 bg-emerald-100'
+                : isZeroState 
+                ? 'text-slate-600 bg-slate-100' 
+                : 'text-[#10B981] bg-[#ECFDF5]'
             }`}>
-              {isZeroState ? 'Início de curso' : `${Math.min(100, Math.round((totalQuestions / 50) * 100))}% da meta`}
+              {dailyGoal
+                ? dailyGoal.answeredToday >= dailyGoal.targetQuestions && dailyGoal.targetQuestions > 0
+                  ? 'Meta Batida! 🎯'
+                  : `${Math.min(100, Math.round((dailyGoal.answeredToday / (dailyGoal.targetQuestions || 1)) * 100))}% da meta`
+                : `${Math.min(100, Math.round((totalQuestions / 50) * 100))}% da meta`}
             </span>
           </div>
           <div className="w-full bg-[#F1F5F9] h-1.5 rounded-full mt-3 overflow-hidden">
             <div
-              className="bg-[#2563EB] h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.round((totalQuestions / 50) * 100))}%` }}
+              className={`h-full rounded-full transition-all duration-500 ${
+                dailyGoal && dailyGoal.answeredToday >= dailyGoal.targetQuestions && dailyGoal.targetQuestions > 0
+                  ? 'bg-emerald-500'
+                  : 'bg-[#2563EB]'
+              }`}
+              style={{
+                width: `${
+                  dailyGoal
+                    ? Math.min(100, Math.round((dailyGoal.answeredToday / (dailyGoal.targetQuestions || 1)) * 100))
+                    : Math.min(100, Math.round((totalQuestions / 50) * 100))
+                }%`
+              }}
             />
           </div>
         </div>
@@ -161,24 +186,27 @@ export function DashboardView({
           </p>
         </div>
 
-        {/* Metric 3: Sequência & Disciplina */}
+        {/* Metric 3: Sequência & Login Diário */}
         <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 shadow-xs hover:border-[#CBD5E1] transition-all">
           <div className="flex items-center justify-between text-xs text-[#64748B] font-semibold mb-2">
-            <span>Sequência Ativa</span>
+            <span>Login Diário & Sequência</span>
             <span className="p-1.5 rounded-md bg-[#FEF3C7] text-[#B45309]">
               <Flame className="w-3.5 h-3.5 fill-[#F59E0B]" />
             </span>
           </div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl md:text-3xl font-extrabold text-[#0F172A] tabular-nums">
-              {isZeroState ? 0 : 18} <span className="text-xs font-semibold text-[#64748B]">dias</span>
+              {streakData ? Math.max(1, streakData.currentStreak) : 1}{' '}
+              <span className="text-xs font-semibold text-[#64748B]">dias</span>
             </span>
             <span className="inline-flex items-center text-xs font-bold text-[#B45309] bg-[#FEF3C7] px-2 py-0.5 rounded-full">
-              {isZeroState ? 'Início do Ciclo' : 'Recorde: 24d'}
+              Recorde: {streakData ? Math.max(1, streakData.longestStreak) : 1}d
             </span>
           </div>
           <p className="text-[11px] text-[#64748B] mt-3">
-            {isZeroState ? 'Inicie sua rotina de estudos diária hoje' : '32.4 horas de foco no ciclo corrente'}
+            {streakData && streakData.currentStreak > 1
+              ? `${streakData.currentStreak} dias consecutivos acessando a plataforma`
+              : '1º dia de acesso consecutivo hoje'}
           </p>
         </div>
 

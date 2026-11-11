@@ -2373,4 +2373,179 @@ export const INITIAL_STUDENT_MISTAKES: Record<string, Record<string, { count: nu
   },
 };
 
+export const INITIAL_APP_NOTIFICATIONS: import('./types').AppNotification[] = [
+  {
+    id: 'notif-1',
+    title: 'Edital Publicado - Banca FGV',
+    message: 'A FGV publicou a retificação do edital com a distribuição dos pesos por disciplina. Verifique as novas diretrizes.',
+    category: 'banca',
+    timestamp: 'Há 25 minutos',
+    read: false,
+    linkTab: 'banco-questoes',
+    badge: 'Urgente FGV'
+  },
+  {
+    id: 'notif-2',
+    title: 'Simulado Nacional Liberado',
+    message: 'O Simulado Oficial de Direito Tributário & Legislação já está disponível com ranking em tempo real.',
+    category: 'simulado',
+    timestamp: 'Há 2 horas',
+    read: false,
+    linkTab: 'simulados',
+    badge: 'Novo Simulado'
+  },
+  {
+    id: 'notif-3',
+    title: 'Meta Diária de Questões',
+    message: 'Você tem uma meta de questões programada para hoje. Resolva questões no caderno para manter seu rendimento.',
+    category: 'meta',
+    timestamp: 'Hoje às 08:00',
+    read: false,
+    linkTab: 'banco-questoes',
+    badge: 'Meta Diária'
+  },
+  {
+    id: 'notif-4',
+    title: 'Informativo STF / Súmulas Vinculantes',
+    message: 'Novas teses de repercussão geral aplicáveis a concursos foram adicionadas à biblioteca de súmulas.',
+    category: 'edital',
+    timestamp: 'Ontem',
+    read: true,
+    linkTab: 'sumulas-leis',
+    badge: 'Jurisprudência'
+  },
+  {
+    id: 'notif-5',
+    title: 'Sequência de Estudos Ativa',
+    message: 'Mantenha sua disciplina! Cada dia de estudo consecutivo turbina a retenção no algoritmo de repetição espaçada.',
+    category: 'streak',
+    timestamp: 'Ontem',
+    read: true,
+    badge: 'Disciplina'
+  }
+];
+
+export const INITIAL_STUDENT_STREAKS: Record<string, import('./types').StudentStreakData> = {
+  'usr-1': {
+    currentStreak: 1,
+    longestStreak: 1,
+    lastStudyDate: new Date().toISOString().split('T')[0],
+    activityDates: [
+      new Date().toISOString().split('T')[0]
+    ]
+  },
+  'usr-2': {
+    currentStreak: 1,
+    longestStreak: 1,
+    lastStudyDate: new Date().toISOString().split('T')[0],
+    activityDates: [
+      new Date().toISOString().split('T')[0]
+    ]
+  }
+};
+
+export const INITIAL_STUDENT_DAILY_GOALS: Record<string, import('./types').StudentDailyGoal> = {
+  'usr-1': {
+    targetQuestions: 30,
+    answeredToday: 12,
+    lastResetDate: new Date().toISOString().split('T')[0]
+  },
+  'usr-2': {
+    targetQuestions: 25,
+    answeredToday: 5,
+    lastResetDate: new Date().toISOString().split('T')[0]
+  }
+};
+
+export const INITIAL_STUDY_SUMMARIES: import('./types').StudySummary[] = [
+  {
+    id: 'res-1',
+    studentId: 'usr-1',
+    title: 'Poder Constituinte Originário e Derivado Reformador',
+    subject: 'Direito Constitucional',
+    topic: 'Teoria da Constituição & Cláusulas Pétreas',
+    rawText: 'O Poder Constituinte Originário instaura uma nova ordem jurídica, rompendo por completo com a ordem constitucional anterior. Caracteriza-se por ser inicial, autônomo, ilimitado juridicamente e incondicionado. Já o Poder Constituinte Derivado Reformador tem a prerrogativa de modificar a Constituição por meio de Emendas Constitucionais (art. 60 da CF/88), sujeitando-se às limitações circunstanciais, formais e materiais. As limitações materiais são as cláusulas pétreas previstas no art. 60, § 4º da CF/88: a forma federativa de Estado; o voto direto, secreto, universal e periódico; a separação dos Poderes; e os direitos e garantias individuais.',
+    summaryPoints: [
+      'O Poder Constituinte Originário instaura uma nova ordem jurídica rompendo por completo com a ordem constitucional anterior.',
+      'Possui quatro atributos cardeais: é inicial, autônomo, ilimitado juridicamente e incondicionado.',
+      'O Poder Derivado Reformador atua mediante Emendas Constitucionais sob rígidos limites formais, procedimentais e materiais.',
+      'As cláusulas pétreas (Art. 60, § 4º) impedem deliberação de propostas tendentes a abolir a Federação, o voto direto/secreto/universal/periódico, a separação dos Poderes e os direitos individuais.'
+    ],
+    keyTerms: [
+      {
+        term: 'Originário',
+        definition: 'Poder inicial, autônomo e ilimitado juridicamente que institui a nova Constituição.',
+        relevance: 'Essencial'
+      },
+      {
+        term: 'Cláusulas Pétreas',
+        definition: 'Limitações materiais ao poder reformador consagradas no art. 60, § 4º da CF/88.',
+        relevance: 'Essencial'
+      },
+      {
+        term: 'Derivado Reformador',
+        definition: 'Competência outorgada ao Congresso Nacional para emendar o texto magno.',
+        relevance: 'Alta'
+      },
+      {
+        term: 'Limitações Materiais',
+        definition: 'Núcleo intangível que não pode ser abolido por reforma constitucional.',
+        relevance: 'Alta'
+      }
+    ],
+    examTips: [
+      'Bancas como FGV adoram afirmar que o voto obrigatório é cláusula pétrea: FALSO! Apenas o voto direto, secreto, universal e periódico é pétreo.',
+      'O Poder Constituinte Derivado Decorrente é o atribuído aos Estados-Membros para elaborar suas próprias Constituições Estaduais.'
+    ],
+    legalRef: 'CF/88, Art. 60, § 4º',
+    createdAt: 'Hoje',
+    readingTimeMinutes: 2
+  },
+  {
+    id: 'res-2',
+    studentId: 'usr-1',
+    title: 'Responsabilidade Civil Objetiva do Estado (Art. 37, § 6º)',
+    subject: 'Direito Administrativo',
+    topic: 'Atos Comissivos e Teoria do Risco Administrativo',
+    rawText: 'As pessoas jurídicas de direito público e as de direito privado prestadoras de serviços públicos responderão pelos danos que seus agentes, nessa qualidade, causarem a terceiros, assegurado o direito de regresso contra o responsável nos casos de dolo ou culpa. A Constituição adotou a teoria do risco administrativo para as condutas comissivas, dispensando a comprovação de culpa da administração. Para a configuração do dever de indenizar, exige-se apenas a conduta oficial, o dano e o nexo de causalidade. As excludentes do nexo causal são: culpa exclusiva da vítima, fato exclusivo de terceiro e caso fortuito ou força maior.',
+    summaryPoints: [
+      'Pessoas jurídicas de direito público e delegatárias de serviços respondem objetivamente por condutas de seus agentes.',
+      'Adoção da Teoria do Risco Administrativo para condutas estatais comissivas (dispensa prova de dolo ou culpa da vítima).',
+      'Elementos essenciais para reparação: conduta administrativa oficial + dano efetivo + nexo de causalidade direto.',
+      'O direito de regresso contra o servidor exige comprovação cabal de dolo ou culpa (responsabilidade subjetiva).'
+    ],
+    keyTerms: [
+      {
+        term: 'Risco Administrativo',
+        definition: 'Fundamento da responsabilidade civil objetiva da administração pública.',
+        relevance: 'Essencial'
+      },
+      {
+        term: 'Direito de Regresso',
+        definition: 'Ação movida pelo Estado contra o agente público causador do dano em caso de dolo ou culpa.',
+        relevance: 'Essencial'
+      },
+      {
+        term: 'Nexo Causal',
+        definition: 'Vínculo direto e imediato entre a conduta oficial do agente e o dano experimentado.',
+        relevance: 'Alta'
+      },
+      {
+        term: 'Excludentes',
+        definition: 'Culpa exclusiva da vítima, fato de terceiro e força maior que rompem o nexo causal.',
+        relevance: 'Alta'
+      }
+    ],
+    examTips: [
+      'O Tema 940 do STF definiu que a ação indenizatória deve ser ajuizada exclusivamente contra o Estado ou pessoa jurídica prestadora, e não diretamente contra o servidor.',
+      'Nas condutas omissivas genéricas, a jurisprudência majoritária adota a responsabilidade subjetiva (faute du service).'
+    ],
+    legalRef: 'CF/88, Art. 37, § 6º • Tema 940 STF',
+    createdAt: 'Ontem',
+    readingTimeMinutes: 2
+  }
+];
+
+
+
 
