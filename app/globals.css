@@ -23,11 +23,11 @@ html.dark {
 }
 
 html.dark body {
-  background-color: #0b0f19;
-  color: #ffffff;
+  background-color: #0b0f19 !important;
+  color: #ffffff !important;
 }
 
-/* Base typography in dark mode: all headings, paragraphs and labels are pure white */
+/* Universal typography in dark mode: all headings, paragraphs, and reading copy */
 html.dark h1,
 html.dark h2,
 html.dark h3,
@@ -41,44 +41,141 @@ html.dark p,
 html.dark label,
 html.dark li,
 html.dark dt,
-html.dark dd {
+html.dark dd,
+html.dark td,
+html.dark th,
+html.dark blockquote {
   color: #ffffff;
 }
 
-/* All dark text classes mapped to pure white */
+/* Specific reading views: Doutrina, Artigos Completos, Jurisprudência e Súmulas */
+html.dark .font-serif,
+html.dark [class*="font-serif"],
+html.dark .whitespace-pre-line,
+html.dark [class*="whitespace-pre-line"],
+html.dark .leading-relaxed {
+  color: #ffffff !important;
+}
+
+/* Scratched / eliminated options should stay clearly readable */
+html.dark .line-through {
+  color: #94a3b8 !important;
+  opacity: 0.8;
+}
+
+/* All dark slate, gray, zinc and black text classes mapped to pure white */
 html.dark .text-\[\#0F172A\],
+html.dark .text-\[\#1E293B\],
+html.dark .text-\[\#334155\],
+html.dark .text-\[\#475569\],
+html.dark .text-slate-950,
 html.dark .text-slate-900,
 html.dark .text-slate-800,
 html.dark .text-slate-700,
-html.dark .text-\[\#1E293B\],
-html.dark .text-\[\#334155\],
+html.dark .text-gray-950,
 html.dark .text-gray-900,
 html.dark .text-gray-800,
 html.dark .text-gray-700,
+html.dark .text-zinc-950,
 html.dark .text-zinc-900,
 html.dark .text-zinc-800,
 html.dark .text-zinc-700,
-html.dark .text-black {
+html.dark .text-black,
+html.dark [class*="text-[#0F172A]"],
+html.dark [class*="text-[#1E293B]"],
+html.dark [class*="text-[#334155]"],
+html.dark [class*="text-[#475569]"],
+html.dark [class*="text-slate-950"] {
   color: #ffffff !important;
 }
 
 /* Secondary and muted texts mapped to bright, clear white tones */
 html.dark .text-\[\#64748B\],
-html.dark .text-\[\#475569\],
+html.dark .text-\[\#94A3B8\],
 html.dark .text-slate-600,
 html.dark .text-slate-500,
+html.dark .text-slate-400,
 html.dark .text-gray-600,
 html.dark .text-gray-500,
+html.dark .text-gray-400,
 html.dark .text-zinc-600,
-html.dark .text-zinc-500 {
-  color: #f8fafc !important;
+html.dark .text-zinc-500,
+html.dark .text-zinc-400,
+html.dark [class*="text-[#64748B]"],
+html.dark [class*="text-[#94A3B8]"] {
+  color: #f1f5f9 !important;
 }
 
-html.dark .text-slate-400,
-html.dark .text-gray-400,
-html.dark .text-\[\#94A3B8\],
-html.dark .text-zinc-400 {
-  color: #e2e8f0 !important;
+/* Deep color classes that become illegible on dark surfaces */
+html.dark .text-blue-950,
+html.dark .text-blue-900,
+html.dark .text-blue-800,
+html.dark .text-blue-700,
+html.dark .text-\[\#1E3A8A\],
+html.dark .text-\[\#0369A1\],
+html.dark .text-\[\#0284C7\],
+html.dark [class*="text-[#1E3A8A]"],
+html.dark [class*="text-blue-950"],
+html.dark [class*="text-blue-900"] {
+  color: #93c5fd !important;
+}
+
+html.dark .text-purple-950,
+html.dark .text-purple-900,
+html.dark .text-purple-800,
+html.dark .text-purple-700,
+html.dark [class*="text-purple-950"],
+html.dark [class*="text-purple-900"] {
+  color: #e9d5ff !important;
+}
+
+html.dark .text-amber-950,
+html.dark .text-amber-900,
+html.dark .text-amber-800,
+html.dark .text-amber-700,
+html.dark .text-\[\#78350F\],
+html.dark .text-\[\#B45309\],
+html.dark [class*="text-[#78350F]"],
+html.dark [class*="text-[#B45309]"],
+html.dark [class*="text-amber-950"] {
+  color: #fde68a !important;
+}
+
+html.dark .text-emerald-950,
+html.dark .text-emerald-900,
+html.dark .text-emerald-800,
+html.dark .text-emerald-700,
+html.dark .text-\[\#065F46\],
+html.dark .text-\[\#047857\],
+html.dark [class*="text-[#065F46]"],
+html.dark [class*="text-[#047857]"],
+html.dark [class*="text-emerald-950"] {
+  color: #6ee7b7 !important;
+}
+
+html.dark .text-rose-950,
+html.dark .text-rose-900,
+html.dark .text-rose-800,
+html.dark .text-rose-700,
+html.dark .text-red-950,
+html.dark .text-red-900,
+html.dark .text-red-800,
+html.dark .text-red-700,
+html.dark .text-\[\#991B1B\],
+html.dark .text-\[\#B91C1C\],
+html.dark .text-\[\#7F1D1D\],
+html.dark [class*="text-[#991B1B]"],
+html.dark [class*="text-[#B91C1C]"],
+html.dark [class*="text-[#7F1D1D]"],
+html.dark [class*="text-rose-950"] {
+  color: #fca5a5 !important;
+}
+
+html.dark .text-indigo-950,
+html.dark .text-indigo-900,
+html.dark .text-indigo-800,
+html.dark .text-indigo-700 {
+  color: #c7d2fe !important;
 }
 
 /* In dark mode, smooth inversions and contrast preservation for panels */
@@ -92,36 +189,96 @@ html.dark .bg-white\/80 {
   background-color: rgba(17, 24, 39, 0.95) !important;
 }
 
-html.dark .bg-\[\#F8FAFC\] {
+html.dark [class*="bg-[#F8FAFC]"] {
   background-color: #0b0f19 !important;
 }
 
-html.dark .bg-\[\#F1F5F9\] {
+html.dark [class*="bg-[#F1F5F9]"] {
   background-color: #1e293b !important;
 }
 
-html.dark .bg-slate-50 {
+html.dark [class*="bg-slate-50"] {
   background-color: #151d2f !important;
 }
 
-html.dark .bg-slate-100 {
+html.dark [class*="bg-slate-100"] {
   background-color: #1e293b !important;
 }
 
-html.dark .border-\[\#E2E8F0\],
-html.dark .border-\[\#E2E8F0\]\/70,
-html.dark .border-slate-200,
-html.dark .border-slate-100 {
+/* Alert & status badge backgrounds with white/bright lettering */
+html.dark [class*="bg-amber-50"],
+html.dark [class*="bg-amber-100"],
+html.dark [class*="bg-[#FEF3C7]"],
+html.dark [class*="bg-[#FFFBEB]"] {
+  background-color: rgba(245, 158, 11, 0.16) !important;
+}
+
+html.dark [class*="bg-emerald-50"],
+html.dark [class*="bg-emerald-100"],
+html.dark [class*="bg-[#ECFDF5]"] {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+}
+
+html.dark [class*="bg-blue-50"],
+html.dark [class*="bg-blue-100"],
+html.dark [class*="bg-[#EFF6FF]"] {
+  background-color: rgba(37, 99, 235, 0.18) !important;
+}
+
+html.dark [class*="bg-purple-50"],
+html.dark [class*="bg-purple-100"] {
+  background-color: rgba(168, 85, 247, 0.16) !important;
+}
+
+html.dark [class*="bg-rose-50"],
+html.dark [class*="bg-rose-100"],
+html.dark [class*="bg-[#FEF2F2]"],
+html.dark [class*="bg-red-50"],
+html.dark [class*="bg-red-100"] {
+  background-color: rgba(244, 63, 94, 0.16) !important;
+}
+
+/* Borders in dark mode */
+html.dark [class*="border-[#E2E8F0]"],
+html.dark [class*="border-[#CBD5E1]"],
+html.dark [class*="border-slate-200"],
+html.dark [class*="border-slate-100"],
+html.dark [class*="border-[#F1F5F9]"] {
   border-color: #243049 !important;
 }
 
-html.dark .border-\[\#CBD5E1\],
-html.dark .border-slate-300 {
-  border-color: #334155 !important;
+html.dark [class*="border-[#BFDBFE]"],
+html.dark [class*="border-blue-200"],
+html.dark [class*="border-blue-100"] {
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+html.dark [class*="border-purple-200"],
+html.dark [class*="border-purple-100"] {
+  border-color: rgba(168, 85, 247, 0.35) !important;
+}
+
+html.dark [class*="border-amber-200"],
+html.dark [class*="border-amber-100"],
+html.dark [class*="border-amber-300"] {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html.dark [class*="border-emerald-200"],
+html.dark [class*="border-emerald-100"],
+html.dark [class*="border-[#A7F3D0]"] {
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+html.dark [class*="border-rose-200"],
+html.dark [class*="border-rose-100"],
+html.dark [class*="border-[#FECACA]"] {
+  border-color: rgba(244, 63, 94, 0.35) !important;
 }
 
 html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
-html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+html.dark [class*="divide-[#F1F5F9]"] > :not([hidden]) ~ :not([hidden]) {
   border-color: #1e293b !important;
 }
 
@@ -137,59 +294,6 @@ html.dark select {
 html.dark input::placeholder,
 html.dark textarea::placeholder {
   color: #94a3b8 !important;
-}
-
-/* Alert & status badge backgrounds with white/bright lettering */
-html.dark .bg-amber-50,
-html.dark .bg-amber-100 {
-  background-color: rgba(245, 158, 11, 0.15) !important;
-}
-html.dark .text-amber-900,
-html.dark .text-amber-800,
-html.dark .text-amber-700 {
-  color: #fde68a !important;
-}
-
-html.dark .bg-emerald-50,
-html.dark .bg-emerald-100 {
-  background-color: rgba(16, 185, 129, 0.15) !important;
-}
-html.dark .text-emerald-900,
-html.dark .text-emerald-800,
-html.dark .text-emerald-700 {
-  color: #a7f3d0 !important;
-}
-
-html.dark .bg-blue-50,
-html.dark .bg-blue-100,
-html.dark .bg-\[\#EFF6FF\],
-html.dark .bg-\[\#EFF6FF\]\/60 {
-  background-color: rgba(37, 99, 235, 0.18) !important;
-}
-html.dark .text-blue-900,
-html.dark .text-blue-800,
-html.dark .text-blue-700 {
-  color: #bfdbfe !important;
-}
-
-html.dark .bg-purple-50,
-html.dark .bg-purple-100 {
-  background-color: rgba(168, 85, 247, 0.15) !important;
-}
-html.dark .text-purple-900,
-html.dark .text-purple-800,
-html.dark .text-purple-700 {
-  color: #e9d5ff !important;
-}
-
-html.dark .bg-rose-50,
-html.dark .bg-rose-100 {
-  background-color: rgba(244, 63, 94, 0.15) !important;
-}
-html.dark .text-rose-900,
-html.dark .text-rose-800,
-html.dark .text-rose-700 {
-  color: #fecdd3 !important;
 }
 
 /* Tabular figures for data tables, metrics and counters */

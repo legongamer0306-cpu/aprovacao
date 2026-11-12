@@ -114,6 +114,10 @@ export const MOCK_QUESTIONS: ExamQuestion[] = [
     subject: 'Direito Constitucional',
     topic: 'Direitos e Garantias Fundamentais - Remédios Constitucionais',
     difficulty: 'Média',
+    author: {
+      name: 'Prof. Carlos Menezes (Banca FGV)',
+      badge: 'Especialista FGV'
+    },
     statement: `Determinada autoridade administrativa federal negou a João o acesso a dados e informações relativas à sua própria pessoa, constantes de banco de dados oficial de entidade governamental de caráter público, sob o pretexto de que tais registros estariam protegidos por sigilo discricionário da pasta.\n\nConsiderando a sistemática dos remédios constitucionais positivada na Constituição da República de 1988 e a jurisprudência sumulada do Supremo Tribunal Federal, assinale a alternativa correta a respeito da medida cabível para tutelar a pretensão de João.`,
     options: [
       {
@@ -161,6 +165,10 @@ export const MOCK_QUESTIONS: ExamQuestion[] = [
     subject: 'Direito Tributário',
     topic: 'Princípios Tributários e Imunidades Constitucionais',
     difficulty: 'Difícil',
+    author: {
+      name: 'Prof. Carlos Menezes (Banca FGV)',
+      badge: 'Especialista FGV'
+    },
     statement: `Lei Ordinária Federal publicada em 28 de dezembro de 2024 majorou a alíquota das Contribuições Sociais destinadas ao financiamento da Seguridade Social incidentes sobre a folha de salários (Art. 195, I, 'a', da CF/88), estabelecendo expressamente que seus efeitos financeiros teriam início imediato a partir de 1º de janeiro de 2025.\n\nÀ luz do regime jurídico das limitações constitucionais ao poder de tributar, assinale a opção que reflete a constitucionalidade e a vigência temporal da referida norma.`,
     options: [
       {
@@ -208,6 +216,10 @@ export const MOCK_QUESTIONS: ExamQuestion[] = [
     subject: 'Direito Administrativo',
     topic: 'Atos Administrativos - Atributos e Extinção',
     difficulty: 'Fácil',
+    author: {
+      name: 'Profª. Amanda Soares (Cebraspe)',
+      badge: 'Auditora Federal'
+    },
     statement: `Acerca dos atributos dos atos administrativos e das modalidades de sua extinção, assinale a opção correta consoante a sólida doutrina de Direito Administrativo.`,
     options: [
       {
@@ -255,6 +267,10 @@ export const MOCK_QUESTIONS: ExamQuestion[] = [
     subject: 'Contabilidade Geral',
     topic: 'Pronunciamentos Técnicos CPC - Reconhecimento de Receita (CPC 47)',
     difficulty: 'Difícil',
+    author: {
+      name: 'Prof. Ricardo Alexandre (Tributário)',
+      badge: 'Auditor & Autor'
+    },
     statement: `Segundo o Pronunciamento Técnico CPC 47 (Receita de Contrato com Cliente), o modelo de 5 etapas para reconhecimento de receita estabelece uma sistemática rigorosa de alocação e apropriação ao longo do tempo ou em momento específico no tempo.\n\nAssinale a opção que indica corretamente o critério exigido para que uma obrigação de desempenho seja satisfeita e reconhecida ao longo do tempo (over time).`,
     options: [
       {
@@ -304,6 +320,10 @@ export const MOCK_QUESTIONS: ExamQuestion[] = [
     topic: 'Reforma Tributária (EC 132/2023) - IBS e CBS',
     difficulty: 'Difícil',
     origin: 'oficial',
+    author: {
+      name: 'IA Aprovação Total',
+      badge: 'Algoritmo Preditivo'
+    },
     statement: `Com o advento da Emenda Constitucional nº 132/2023 (Reforma Tributária sobre o Consumo), instituiu-se o Imposto sobre Bens e Serviços (IBS) e a Contribuição sobre Bens e Serviços (CBS), conformando um modelo de IVA Dual no ordenamento jurídico pátrio.\n\nConsiderando a conformação das imunidades e a não cumulatividade plena aplicável ao novo regime, assinale a opção correta acerca da incidência do IBS e CBS.`,
     options: [
       {
@@ -352,6 +372,10 @@ export const MOCK_QUESTIONS: ExamQuestion[] = [
     topic: 'Processo Legislativo - Medidas Provisórias e Emendas Constitucionais',
     difficulty: 'Média',
     origin: 'oficial',
+    author: {
+      name: 'Coordenação Pedagógica FGV',
+      badge: 'Simulados Oficiais'
+    },
     statement: `Suponha que durante a vigência de Estado de Defesa decretado em determinado estado da federação, o Congresso Nacional pretenda aprovar Emenda Constitucional que altere a repartição constitucional das receitas tributárias entre a União e os Municípios.\n\nÀ luz das limitações circunstanciais e materiais ao poder constituinte derivado reformador, assinale a opção correta.`,
     options: [
       {

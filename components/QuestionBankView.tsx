@@ -28,7 +28,8 @@ import {
   X,
   Scissors,
   SkipForward,
-  Building2
+  Building2,
+  User
 } from 'lucide-react';
 import { ExamQuestion } from '@/lib/types';
 import { MemberQuestionModal } from '@/components/MemberQuestionModal';
@@ -67,6 +68,7 @@ export function QuestionBankView({
   const [selectedSubgroup, setSelectedSubgroup] = useState<QuestionOriginSubgroup>(initialMode || 'all');
   const [selectedSubject, setSelectedSubject] = useState<string>(initialSubjectFilter || 'all');
   const [selectedBoard, setSelectedBoard] = useState<string>('all');
+  const [selectedAuthor, setSelectedAuthor] = useState<string>('all');
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -105,6 +107,20 @@ export function QuestionBankView({
     new Set(questions.map((q) => getQuestionBoard(q)).filter(Boolean))
   ).sort();
 
+  // Helper to extract question author robustly
+  const getQuestionAuthor = (q: ExamQuestion): string => {
+    if (q.author?.name?.trim()) return q.author.name.trim();
+    if (q.origin === 'membros') return 'Membro da Comunidade';
+    const b = getQuestionBoard(q);
+    if (b) return `Banca ${b}`;
+    return 'Coordenação Pedagógica';
+  };
+
+  // Extract unique authors dynamically
+  const uniqueAuthors = Array.from(
+    new Set(questions.map((q) => getQuestionAuthor(q)).filter(Boolean))
+  ).sort();
+
   // Extract unique subjects
   const subjects = ['all', ...Array.from(new Set(questions.map((q) => q.subject)))];
 
@@ -135,6 +151,15 @@ export function QuestionBankView({
       }
     }
 
+    // Author filter (Autor da questão)
+    if (selectedAuthor !== 'all') {
+      const qAuthor = getQuestionAuthor(q).toLowerCase();
+      const targetAuthor = selectedAuthor.toLowerCase();
+      if (!qAuthor.includes(targetAuthor) && !targetAuthor.includes(qAuthor)) {
+        return false;
+      }
+    }
+
     // Subject filter (Matéria / Disciplina)
     if (selectedSubject !== 'all' && !q.subject.toLowerCase().includes(selectedSubject.toLowerCase())) {
       return false;
@@ -150,10 +175,11 @@ export function QuestionBankView({
       return false;
     }
 
-    // Search query filter (combina busca por banca, matéria, assunto, enunciado ou código)
+    // Search query filter (combina busca por banca, autor, matéria, assunto, enunciado ou código)
     if (searchQuery.trim()) {
       const term = searchQuery.trim().toLowerCase();
       const qBoard = getQuestionBoard(q).toLowerCase();
+      const qAuthor = getQuestionAuthor(q).toLowerCase();
       const qSubject = (q.subject || '').toLowerCase();
       const qTopic = (q.topic || '').toLowerCase();
       const qCode = (q.code || '').toLowerCase();
@@ -163,6 +189,7 @@ export function QuestionBankView({
 
       const matches =
         qBoard.includes(term) ||
+        qAuthor.includes(term) ||
         qSubject.includes(term) ||
         qTopic.includes(term) ||
         qCode.includes(term) ||
@@ -272,6 +299,7 @@ export function QuestionBankView({
 
   const isAnyFilterActive =
     selectedBoard !== 'all' ||
+    selectedAuthor !== 'all' ||
     selectedSubject !== 'all' ||
     selectedTopic !== 'all' ||
     selectedDifficulty !== 'all' ||
@@ -279,6 +307,7 @@ export function QuestionBankView({
 
   const handleClearAllFilters = () => {
     setSelectedBoard('all');
+    setSelectedAuthor('all');
     setSelectedSubject('all');
     setSelectedTopic('all');
     setSelectedDifficulty('all');
@@ -441,7 +470,7 @@ export function QuestionBankView({
                 setSearchQuery(e.target.value);
                 setCurrentIndex(0);
               }}
-              placeholder="Pesquisar por banca (ex: FGV, Cebraspe), matéria, assunto, enunciado ou código..."
+              placeholder="Pesquisar por autor, banca (ex: FGV, Cebraspe), matéria, assunto, enunciado ou código..."
               className="w-full text-xs font-medium pl-9 pr-8 py-2 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] placeholder-[#94A3B8] focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] outline-none"
             />
             {searchQuery && (
@@ -495,13 +524,42 @@ export function QuestionBankView({
                   setSelectedBoard(e.target.value);
                   setCurrentIndex(0);
                 }}
-                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-[#CBD5E1] bg-white text-[#0F172A] focus:border-[#2563EB] outline-none cursor-pointer max-w-[150px] truncate"
+                className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border outline-none cursor-pointer max-w-[150px] truncate transition-colors ${
+                  selectedBoard !== 'all'
+                    ? 'border-[#2563EB] bg-[#EFF6FF] text-[#2563EB] font-bold'
+                    : 'border-[#CBD5E1] bg-white text-[#0F172A] focus:border-[#2563EB]'
+                }`}
                 title="Filtrar por banca examinadora"
               >
                 <option value="all">Todas as Bancas</option>
                 {uniqueBoards.map((b) => (
                   <option key={b} value={b}>
                     {b}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Author filter dropdown */}
+            <div className="flex items-center gap-1 text-xs">
+              <User className="w-3.5 h-3.5 text-[#64748B] hidden sm:block shrink-0" />
+              <select
+                value={selectedAuthor}
+                onChange={(e) => {
+                  setSelectedAuthor(e.target.value);
+                  setCurrentIndex(0);
+                }}
+                className={`text-xs font-semibold px-2.5 py-1.5 rounded-lg border outline-none cursor-pointer max-w-[160px] truncate transition-colors ${
+                  selectedAuthor !== 'all'
+                    ? 'border-[#2563EB] bg-[#EFF6FF] text-[#2563EB] font-bold'
+                    : 'border-[#CBD5E1] bg-white text-[#0F172A] focus:border-[#2563EB]'
+                }`}
+                title="Filtrar questões por autor"
+              >
+                <option value="all">Todos os Autores</option>
+                {uniqueAuthors.map((author) => (
+                  <option key={author} value={author}>
+                    {author}
                   </option>
                 ))}
               </select>
@@ -674,7 +732,7 @@ export function QuestionBankView({
               <div className="max-w-md mx-auto space-y-1.5">
                 <h3 className="text-base font-black text-[#0F172A]">Nenhuma questão encontrada</h3>
                 <p className="text-xs text-[#64748B] leading-relaxed">
-                  Não encontramos questões correspondentes aos filtros aplicados {selectedBoard !== 'all' && `(Banca: ${selectedBoard})`} {selectedSubject !== 'all' && `(Disciplina: ${selectedSubject})`} {searchQuery && `(Termo: "${searchQuery}")`}.
+                  Não encontramos questões correspondentes aos filtros aplicados {selectedAuthor !== 'all' && `(Autor: ${selectedAuthor})`} {selectedBoard !== 'all' && `(Banca: ${selectedBoard})`} {selectedSubject !== 'all' && `(Disciplina: ${selectedSubject})`} {searchQuery && `(Termo: "${searchQuery}")`}.
                 </p>
               </div>
               <button
@@ -712,11 +770,33 @@ export function QuestionBankView({
                   {activeQuestion.board} • {activeQuestion.agency} • {activeQuestion.year}
                 </span>
 
-                {activeQuestion.author && (
-                  <span className="text-[11px] text-[#475569] font-semibold bg-[#F1F5F9] px-2 py-0.5 rounded-full">
-                    Autor: <strong>{activeQuestion.author.name}</strong>
-                  </span>
-                )}
+                {/* Interactive Author Badge */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const auth = getQuestionAuthor(activeQuestion);
+                    setSelectedAuthor(selectedAuthor === auth ? 'all' : auth);
+                    setCurrentIndex(0);
+                  }}
+                  title={selectedAuthor === getQuestionAuthor(activeQuestion) ? 'Clique para remover filtro de autor' : `Filtrar apenas questões de ${getQuestionAuthor(activeQuestion)}`}
+                  className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full transition-all flex items-center gap-1 cursor-pointer ${
+                    selectedAuthor === getQuestionAuthor(activeQuestion)
+                      ? 'bg-[#2563EB] text-white shadow-2xs font-bold ring-1 ring-[#2563EB]'
+                      : 'text-[#475569] dark:text-[#f8fafc] bg-[#F1F5F9] dark:bg-slate-800 hover:bg-[#E2E8F0] dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <User className={`w-3 h-3 ${selectedAuthor === getQuestionAuthor(activeQuestion) ? 'text-white' : 'text-[#2563EB]'}`} />
+                  <span>Autor: <strong>{getQuestionAuthor(activeQuestion)}</strong></span>
+                  {activeQuestion.author?.badge && (
+                    <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ml-1 ${
+                      selectedAuthor === getQuestionAuthor(activeQuestion)
+                        ? 'bg-white/20 text-white'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {activeQuestion.author.badge}
+                    </span>
+                  )}
+                </button>
 
                 <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                   activeQuestion.difficulty === 'Fácil'

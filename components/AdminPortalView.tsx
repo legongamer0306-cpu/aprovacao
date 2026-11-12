@@ -2411,7 +2411,8 @@ export function AdminPortalView({
                   q.statement.toLowerCase().includes(searchLow) ||
                   q.code.toLowerCase().includes(searchLow) ||
                   q.topic.toLowerCase().includes(searchLow) ||
-                  q.board.toLowerCase().includes(searchLow)
+                  q.board.toLowerCase().includes(searchLow) ||
+                  (q.author?.name || '').toLowerCase().includes(searchLow)
                 );
               })
               .map((q) => (
@@ -2433,6 +2434,11 @@ export function AdminPortalView({
                         <span className="text-[10px] bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded">
                           {q.board} • {q.year}
                         </span>
+                        {q.author?.name && (
+                          <span className="text-[10px] bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded">
+                            Autor: {q.author.name}
+                          </span>
+                        )}
                       </div>
                     </div>
 
