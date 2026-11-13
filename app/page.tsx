@@ -67,7 +67,8 @@ import {
   AppNotification,
   StudentStreakData,
   StudentDailyGoal,
-  StudySummary
+  StudySummary,
+  SavedAISchedule
 } from '@/lib/types';
 import { 
   LayoutDashboard, 
@@ -131,6 +132,8 @@ export default function HomePage() {
   const [studentMistakes, setStudentMistakes] = useState<Record<string, Record<string, { count: number; lastMissedAt: string }>>>(INITIAL_STUDENT_MISTAKES);
   const [studentScratchedQuestions, setStudentScratchedQuestions] = useState<Record<string, string[]>>({});
   const [studySummaries, setStudySummaries] = useState<StudySummary[]>(INITIAL_STUDY_SUMMARIES);
+  const [studentAISchedules, setStudentAISchedules] = useState<Record<string, SavedAISchedule[]>>({});
+  const [activeAIScheduleIdMap, setActiveAIScheduleIdMap] = useState<Record<string, string>>({});
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Safe client hydration from localStorage on mount (eliminates all SSR hydration mismatches)
@@ -289,6 +292,18 @@ export default function HomePage() {
         if (savedSummaries) {
           const parsed = JSON.parse(savedSummaries);
           if (Array.isArray(parsed) && parsed.length > 0) setStudySummaries(parsed);
+        }
+
+        const savedAISchedules = localStorage.getItem('aprovacao_total_student_ai_schedules');
+        if (savedAISchedules) {
+          const parsed = JSON.parse(savedAISchedules);
+          if (parsed && typeof parsed === 'object') setStudentAISchedules(parsed);
+        }
+
+        const savedActiveAISchedules = localStorage.getItem('aprovacao_total_active_ai_schedule_ids');
+        if (savedActiveAISchedules) {
+          const parsed = JSON.parse(savedActiveAISchedules);
+          if (parsed && typeof parsed === 'object') setActiveAIScheduleIdMap(parsed);
         }
 
         const savedTheme = localStorage.getItem('aprovacao_total_theme');
@@ -499,6 +514,20 @@ export default function HomePage() {
       localStorage.setItem('aprovacao_total_study_summaries', JSON.stringify(studySummaries));
     } catch {}
   }, [studySummaries, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      localStorage.setItem('aprovacao_total_student_ai_schedules', JSON.stringify(studentAISchedules));
+    } catch {}
+  }, [studentAISchedules, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    try {
+      localStorage.setItem('aprovacao_total_active_ai_schedule_ids', JSON.stringify(activeAIScheduleIdMap));
+    } catch {}
+  }, [activeAIScheduleIdMap, isMounted]);
 
   const handleToggleTheme = () => {
     setIsDarkMode((prev) => {
@@ -1192,16 +1221,26 @@ export default function HomePage() {
   };
 
   // 2. Isolamento de Tarefas / Cronograma: cada aluno tem seu cronograma diário
+  const activeAISchedules = studentAISchedules[activeStudentId] || [];
+  const activeAIScheduleId = activeAIScheduleIdMap[activeStudentId] || null;
+
   const activeTasks = currentStudent
     ? (studentTasks[currentStudent.id] || getInitialStudentTasks(currentStudent.id, currentStudent.targetExam))
     : (studentTasks['usr-1'] || MOCK_DAILY_TASKS);
 
   const handleToggleTask = (taskId: string) => {
-    setStudentTasks((prev) => {
-      const list = prev[activeStudentId] || activeTasks;
-      const updated = list.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
-      return { ...prev, [activeStudentId]: updated };
-    });
+    const list = studentTasks[activeStudentId] || activeTasks;
+    const updated = list.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
+    setStudentTasks((prev) => ({ ...prev, [activeStudentId]: updated }));
+
+    if (activeAIScheduleId) {
+      setStudentAISchedules((prev) => ({
+        ...prev,
+        [activeStudentId]: (prev[activeStudentId] || []).map((s) =>
+          s.id === activeAIScheduleId ? { ...s, tasks: updated } : s
+        ),
+      }));
+    }
   };
 
   const handleUpdateTasks = (newTasks: DailyTask[]) => {
@@ -1209,6 +1248,15 @@ export default function HomePage() {
       ...prev,
       [activeStudentId]: newTasks,
     }));
+
+    if (activeAIScheduleId) {
+      setStudentAISchedules((prev) => ({
+        ...prev,
+        [activeStudentId]: (prev[activeStudentId] || []).map((s) =>
+          s.id === activeAIScheduleId ? { ...s, tasks: newTasks } : s
+        ),
+      }));
+    }
   };
 
   // 3. Isolamento de Ciclo de Estudos: cada aluno tem seu ciclo semanal
@@ -1221,6 +1269,16 @@ export default function HomePage() {
       ...prev,
       [activeStudentId]: newDays,
     }));
+
+    if (activeAIScheduleId) {
+      setStudentAISchedules((prev) => ({
+        ...prev,
+        [activeStudentId]: (prev[activeStudentId] || []).map((s) =>
+          s.id === activeAIScheduleId ? { ...s, cycleDays: newDays } : s
+        ),
+      }));
+    }
+
     if (currentStudent) {
       const auditItem: AuditEntry = {
         id: `aud-cycle-${Date.now()}`,
@@ -1236,6 +1294,120 @@ export default function HomePage() {
         ...prev,
         [currentStudent.id]: [auditItem, ...(prev[currentStudent.id] || [])],
       }));
+    }
+  };
+
+  // Handlers de Cronogramas com IA (Criar a partir de edital colado, Editar, Selecionar, Excluir)
+  const handleSaveAISchedule = (schedule: SavedAISchedule, isEditing: boolean) => {
+    setStudentAISchedules((prev) => {
+      const list = prev[activeStudentId] || [];
+      const updatedList = isEditing
+        ? list.map((s) => (s.id === schedule.id ? schedule : s))
+        : [schedule, ...list];
+      return { ...prev, [activeStudentId]: updatedList };
+    });
+
+    setActiveAIScheduleIdMap((prev) => ({
+      ...prev,
+      [activeStudentId]: schedule.id,
+    }));
+
+    setStudentTasks((prev) => ({
+      ...prev,
+      [activeStudentId]: schedule.tasks,
+    }));
+
+    setStudentCycles((prev) => ({
+      ...prev,
+      [activeStudentId]: schedule.cycleDays,
+    }));
+
+    if (schedule.syllabus) {
+      handleSaveSyllabus(currentTarget.id, schedule.syllabus);
+    }
+
+    if (currentStudent) {
+      const auditItem: AuditEntry = {
+        id: `aud-aisched-${Date.now()}`,
+        studentId: currentStudent.id,
+        studentName: currentStudent.name,
+        action: 'ciclo_ajustado',
+        description: isEditing
+          ? `Cronograma IA "${schedule.title}" editado com base no texto do edital`
+          : `Novo cronograma IA "${schedule.title}" criado a partir do edital colado`,
+        subject: 'Cronograma IA',
+        result: 'concluido',
+        timestamp: 'Hoje às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        details: `${schedule.subjectsCount} disciplinas e ${schedule.topicsCount} tópicos estruturados.`,
+      };
+      setStudentAuditLogs((prev) => ({
+        ...prev,
+        [currentStudent.id]: [auditItem, ...(prev[currentStudent.id] || [])],
+      }));
+    }
+  };
+
+  const handleSelectAISchedule = (scheduleId: string) => {
+    const targetSched = (studentAISchedules[activeStudentId] || []).find((s) => s.id === scheduleId);
+    if (!targetSched) return;
+
+    setActiveAIScheduleIdMap((prev) => ({
+      ...prev,
+      [activeStudentId]: scheduleId,
+    }));
+    setStudentTasks((prev) => ({
+      ...prev,
+      [activeStudentId]: targetSched.tasks,
+    }));
+    setStudentCycles((prev) => ({
+      ...prev,
+      [activeStudentId]: targetSched.cycleDays,
+    }));
+  };
+
+  const handleDeleteAISchedule = (scheduleId: string) => {
+    const currentList = studentAISchedules[activeStudentId] || [];
+    const remaining = currentList.filter((s) => s.id !== scheduleId);
+
+    setStudentAISchedules((prev) => ({
+      ...prev,
+      [activeStudentId]: remaining,
+    }));
+
+    if (activeAIScheduleIdMap[activeStudentId] === scheduleId) {
+      const nextActive = remaining[0];
+      if (nextActive) {
+        setActiveAIScheduleIdMap((prev) => ({
+          ...prev,
+          [activeStudentId]: nextActive.id,
+        }));
+        setStudentTasks((prev) => ({
+          ...prev,
+          [activeStudentId]: nextActive.tasks,
+        }));
+        setStudentCycles((prev) => ({
+          ...prev,
+          [activeStudentId]: nextActive.cycleDays,
+        }));
+      } else {
+        setActiveAIScheduleIdMap((prev) => {
+          const copy = { ...prev };
+          delete copy[activeStudentId];
+          return copy;
+        });
+        setStudentTasks((prev) => ({
+          ...prev,
+          [activeStudentId]: currentStudent
+            ? getInitialStudentTasks(currentStudent.id, currentStudent.targetExam)
+            : MOCK_DAILY_TASKS,
+        }));
+        setStudentCycles((prev) => ({
+          ...prev,
+          [activeStudentId]: currentStudent
+            ? getInitialStudentCycle(currentStudent.id, currentStudent.targetExam)
+            : getInitialStudentCycle('usr-1', 'RFB 2026'),
+        }));
+      }
     }
   };
 
@@ -1882,6 +2054,11 @@ export default function HomePage() {
                     cycleDays={activeCycle}
                     onUpdateCycleDays={handleUpdateCycleDays}
                     currentStudent={currentStudent}
+                    aiSchedules={activeAISchedules}
+                    activeAIScheduleId={activeAIScheduleId}
+                    onSaveAISchedule={handleSaveAISchedule}
+                    onSelectAISchedule={handleSelectAISchedule}
+                    onDeleteAISchedule={handleDeleteAISchedule}
                   />
                 )}
 

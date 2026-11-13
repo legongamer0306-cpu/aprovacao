@@ -130,6 +130,25 @@ export interface DailyTask {
   currentCount?: number;
 }
 
+export interface SavedAISchedule {
+  id: string;
+  studentId: string;
+  title: string;
+  editalText: string;
+  weeklyHours: number;
+  methodology: 'ciclo_intercalado' | 'foco_questoes' | 'reta_final';
+  focusWeaknesses: boolean;
+  includeDiscursivas: boolean;
+  subjectsCount: number;
+  topicsCount: number;
+  extractedSubjects: string[];
+  tasks: DailyTask[];
+  cycleDays: CycleDay[];
+  syllabus?: CustomSyllabus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SubjectPerformance {
   subject: string;
   questionsAnswered: number;
